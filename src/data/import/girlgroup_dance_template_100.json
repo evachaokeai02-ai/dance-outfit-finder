@@ -1,0 +1,26 @@
+[
+  {
+    "id": "gg-001",
+    "danceName": "<歌曲名>",
+    "aliases": ["<英文别名>", "<常见空格/连写>", "<中文名>"],
+    "artist": "<团体/艺人>",
+    "danceType": "女团",
+    "styleTags": ["甜酷", "性感", "甜辣"],
+    "sceneTags": ["练舞房", "舞台", "路演"],
+    "outfitKeywords": ["短上衣", "高腰", "金属配饰"],
+    "stageOutfitSummary": "一句话描述这支舞的舞台穿搭风格与动作需求。",
+    "review": {
+      "status": "draft",
+      "priority": "P1",
+      "confidence": 0.75,
+      "sourceType": "manual",
+      "referenceLinks": ["https://example.com/perf-link"],
+      "copyrightRisk": "medium",
+      "fitNotes": "动作幅度大，鞋底防滑优先",
+      "qaOwner": "",
+      "qaNotes": "",
+      "lastReviewedAt": "",
+      "version": 1
+    }
+  }
+]
