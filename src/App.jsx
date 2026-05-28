@@ -91,12 +91,26 @@ function App() {
 
   async function copyLook(look) {
     const text = makeCopyText(look, finalInfo);
+
     try {
-      await navigator.clipboard.writeText(text);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
       setNotice(`已复制「${look.title}」小红书文案`);
     } catch {
       setNotice('复制失败，可以手动选中文案复制');
     }
+
     window.setTimeout(() => setNotice(''), 1800);
   }
 
