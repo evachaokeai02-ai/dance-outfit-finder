@@ -8,3 +8,7 @@ createRoot(document.getElementById('root')).render(
     <App />
   </React.StrictMode>,
 );
+
+window.__APP_BOOTSTRAPPED__ = true;
+const fallback = document.getElementById('boot-fallback');
+if (fallback) fallback.remove();
