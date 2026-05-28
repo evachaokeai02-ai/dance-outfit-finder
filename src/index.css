@@ -42,3 +42,13 @@ button {
     linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.3)),
     var(--product-bg, linear-gradient(135deg, #fecdd3, #99f6e4));
 }
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(12px);
+}
+
+.fancy-btn {
+  background-image: linear-gradient(135deg, #fb7185 0%, #f472b6 45%, #a78bfa 100%);
+}

@@ -28,6 +28,7 @@ import {
   makeEmptyForm,
   manualToInfo,
 } from './lib/recommendationEngine';
+import { getFallbackKpopKeywords, getKpopSuggestions } from './lib/dancePipeline';
 
 function App() {
   const [page, setPage] = useState('home');
@@ -138,6 +139,8 @@ function App() {
         )}
       </div>
 
+      <ComplianceNotice />
+
       {notice && (
         <div className="fixed bottom-5 left-1/2 z-20 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-full bg-ink px-4 py-3 text-center text-sm text-white shadow-card">
           {notice}
@@ -191,7 +194,7 @@ function HomePage({ onStart }) {
       </div>
 
       <button
-        className="mt-7 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-ink px-5 text-base font-bold text-white shadow-card"
+        className="fancy-btn mt-7 flex h-14 w-full items-center justify-center gap-2 rounded-full px-5 text-base font-bold text-white shadow-card"
         onClick={onStart}
       >
         <WandSparkles size={20} />
@@ -202,11 +205,15 @@ function HomePage({ onStart }) {
 }
 
 function InputPage({ query, setQuery, onSearch }) {
+  const [onlyKpop, setOnlyKpop] = useState(true);
+  const suggestions = useMemo(() => getKpopSuggestions(danceStyles, onlyKpop, 8), [onlyKpop]);
+  const fallbackKeywords = getFallbackKpopKeywords();
+
   return (
     <section className="flex flex-1 flex-col pt-8 safe-bottom">
-      <PageTitle eyebrow="第一步" title="你今天要跳哪支舞？" subtitle="输入舞蹈名或歌曲名，我会从本地舞蹈库里识别风格。" />
+      <PageTitle eyebrow="第一步" title="你今天要跳哪支舞？" subtitle="先支持 K-pop / 女团舞，输入舞蹈名或歌曲名，我会从本地舞蹈库里识别风格。" />
 
-      <div className="mt-7 rounded-[1.75rem] bg-white p-5 shadow-soft">
+      <div className="glass-panel mt-7 rounded-[1.75rem] p-5 shadow-soft">
         <label className="text-sm font-bold text-stone-600" htmlFor="dance-input">
           舞蹈名 / 歌曲名
         </label>
@@ -221,7 +228,7 @@ function InputPage({ query, setQuery, onSearch }) {
           className="mt-3 h-14 w-full rounded-2xl border border-rose/15 bg-blush/50 px-4 text-base outline-none transition focus:border-rose focus:bg-white"
         />
         <button
-          className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-rose px-5 py-4 text-base font-bold text-white shadow-card disabled:cursor-not-allowed disabled:bg-stone-300"
+          className="fancy-btn mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-base font-bold text-white shadow-card disabled:cursor-not-allowed disabled:bg-stone-300 disabled:bg-none"
           onClick={onSearch}
           disabled={!query.trim()}
         >
@@ -230,10 +237,20 @@ function InputPage({ query, setQuery, onSearch }) {
         </button>
       </div>
 
-      <div className="mt-6">
-        <p className="mb-3 text-sm font-bold text-stone-500">可试试这些</p>
-        <div className="flex flex-wrap gap-2">
-          {danceStyles.slice(0, 6).map((dance) => (
+      <div className="mt-6 rounded-3xl border border-white/70 bg-white/70 p-4 shadow-card backdrop-blur">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-bold text-stone-600">{onlyKpop ? '先试试这些 K-pop' : '先试试这些热门舞'}</p>
+          <button
+            className="rounded-full bg-ink px-3 py-1.5 text-xs font-bold text-white"
+            onClick={() => setOnlyKpop((current) => !current)}
+          >
+            {onlyKpop ? '切换: 全部舞种' : '切换: 仅K-pop'}
+          </button>
+        </div>
+
+        {suggestions.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((dance) => (
             <button
               key={dance.id}
               className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-stone-700 shadow-card"
@@ -241,8 +258,24 @@ function InputPage({ query, setQuery, onSearch }) {
             >
               {dance.danceName}
             </button>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm text-stone-500">暂时没有匹配的 K-pop 舞蹈，你可以先试这些关键词：</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {fallbackKeywords.map((word) => (
+                <button
+                  key={word}
+                  className="rounded-full bg-blush px-3 py-2 text-xs font-bold text-rose"
+                  onClick={() => setQuery(word)}
+                >
+                  {word}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -344,6 +377,7 @@ function ResultsPage({ info, looks, onCopy, onRestart }) {
       <PageTitle eyebrow="搭配完成" title={`《${info.danceName}》的 3 套出片 Look`} subtitle="每套都按风格、场景、预算和动作需求做了本地打分推荐。" />
 
       <div className="mt-5 flex flex-wrap gap-2">
+        <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">示例商品</span>
         {[info.danceType, ...info.styleTags, ...info.sceneTags, ...info.bodyTags].filter(Boolean).map((tag) => (
           <span key={tag} className="rounded-full bg-white px-3 py-2 text-sm font-bold text-stone-600 shadow-card">
             {tag}
@@ -377,7 +411,7 @@ function LookCard({ look, info, onCopy }) {
   ];
 
   return (
-    <article className="rounded-[1.75rem] bg-white p-5 shadow-soft">
+    <article className="rounded-[1.75rem] border border-white/70 bg-white/80 p-5 shadow-soft backdrop-blur">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="inline-flex items-center gap-1 rounded-full bg-blush px-3 py-1.5 text-xs font-bold text-rose">
@@ -402,6 +436,7 @@ function LookCard({ look, info, onCopy }) {
       <TextBlock title="拍摄建议" text={look.photoTip} />
 
       <div className="mt-5 flex flex-wrap gap-2">
+        <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">示例商品</span>
         {items.map(([label, product]) => (
           <a
             key={product.id}
@@ -425,7 +460,7 @@ function LookCard({ look, info, onCopy }) {
       </button>
 
       <p className="mt-3 text-xs leading-5 text-stone-400">
-        文案会包含《{info.danceName}》、单品名称、推荐理由和拍摄建议。
+        文案会包含《{info.danceName}》、单品名称、推荐理由和拍摄建议。当前商品链接为示例链接，后续可接拼多多 API 做实时搜索。
       </p>
     </article>
   );
@@ -525,6 +560,23 @@ function TextBlock({ title, text }) {
       <p className="text-sm font-bold text-stone-500">{title}</p>
       <p className="mt-2 leading-7 text-stone-700">{text}</p>
     </div>
+  );
+}
+
+
+function ComplianceNotice() {
+  return (
+    <section className="mx-auto mt-6 w-full max-w-md rounded-2xl border border-stone-200/70 bg-white/80 p-4 text-xs leading-6 text-stone-500 shadow-card">
+      <p>
+        本工具为独立舞蹈穿搭灵感推荐产品，非拼多多、淘宝、小红书等平台官方产品，亦不代表上述平台的官方推荐或背书。
+      </p>
+      <p className="mt-3">
+        本工具展示的商品信息、图片、价格、库存、优惠、物流及售后服务均以第三方平台实际页面为准。本工具仅提供穿搭灵感与商品信息聚合，不参与商品交易、发货、售后或质量保证。
+      </p>
+      <p className="mt-3">
+        如页面包含 AI 生成穿搭图，该图片仅为虚拟示意效果，不代表真实商品上身效果。
+      </p>
+    </section>
   );
 }
 
