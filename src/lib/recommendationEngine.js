@@ -73,11 +73,10 @@ export function manualToInfo(form, fallbackDance) {
 }
 
 function getBudgetOrder(range) {
-  if (range === '100以内') return ['100以内', '100-300', '300-500', '500+'];
-  if (range === '100-300') return ['100-300', '100以内', '300-500', '500+'];
-  if (range === '300-500') return ['300-500', '500+', '100-300', '100以内'];
-  if (range === '500+') return ['500+', '300-500', '100-300', '100以内'];
-  return [];
+  if (range === '50-100') return ['100以内', '100-300', '300-500', '500+'];
+  if (range === '100-200') return ['100-300', '100以内', '300-500', '500+'];
+  if (range === '200-300') return ['100-300', '300-500', '100以内', '500+'];
+  return ['100-300', '100以内', '300-500', '500+'];
 }
 
 function scoreProduct(product, info) {
@@ -157,7 +156,7 @@ export function makeEmptyForm(dance) {
     danceType: dance?.danceType || 'K-pop',
     style: dance?.styleTags?.[0] || '甜酷',
     scene: dance?.sceneTags?.[0] || '练舞房',
-    budget: '100-300',
+    budget: '100-200',
     body: '方便大动作',
     freeText: '',
   };

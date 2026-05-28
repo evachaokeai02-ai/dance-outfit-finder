@@ -1,7 +1,7 @@
 export const danceTypeOptions = ['K-pop', 'Jazz', '路演', '练舞房', 'Urban', '女团', '其他'];
 export const styleOptions = ['甜酷', '辣妹', '清冷', '运动', 'Y2K', '学院', '暗黑', '元气', '性感', '甜辣', '妈咪'];
 export const sceneOptions = ['练舞房', '户外', '舞台', '路演', '夜景'];
-export const budgetOptions = ['100以内', '100-300', '300-500', '500+'];
+export const budgetOptions = ['50-100', '100-200', '200-300'];
 export const bodyOptions = ['显腿长', '显腰', '遮胯', '不露腰', '方便大动作'];
 
 export const visualMap = {
