@@ -2,89 +2,235 @@
   {
     "id": "who-is-she",
     "danceName": "Who Is She",
-    "aliases": ["who is she", "WhoIsShe", "whoisshe", "who she"],
+    "aliases": [
+      "who is she",
+      "WhoIsShe",
+      "whoisshe",
+      "who she"
+    ],
     "artist": "I-LAND2",
     "danceType": "女团",
-    "styleTags": ["甜酷", "元气", "学院"],
-    "sceneTags": ["练舞房", "舞台", "日常"],
-    "outfitKeywords": ["短上衣", "百褶裙", "学院", "蝴蝶结"],
+    "styleTags": [
+      "性感",
+      "甜辣",
+      "妈咪"
+    ],
+    "sceneTags": [
+      "练舞房",
+      "舞台",
+      "日常"
+    ],
+    "outfitKeywords": [
+      "短上衣",
+      "百褶裙",
+      "学院",
+      "蝴蝶结",
+      "修身",
+      "高跟感"
+    ],
     "stageOutfitSummary": "少女感和自信感都很强，适合短上衣、百褶裙、亮色配饰，整体要轻盈、有层次。"
   },
   {
     "id": "super-shy",
     "danceName": "Super Shy",
-    "aliases": ["supershy", "super shy", "超级害羞", "super shy newjeans"],
+    "aliases": [
+      "supershy",
+      "super shy",
+      "超级害羞",
+      "super shy newjeans"
+    ],
     "artist": "NewJeans",
     "danceType": "K-pop",
-    "styleTags": ["元气", "运动", "学院"],
-    "sceneTags": ["练舞房", "户外", "日常"],
-    "outfitKeywords": ["运动背心", "工装短裤", "棒球帽", "清爽"],
+    "styleTags": [
+      "元气",
+      "运动",
+      "学院"
+    ],
+    "sceneTags": [
+      "练舞房",
+      "户外",
+      "日常"
+    ],
+    "outfitKeywords": [
+      "运动背心",
+      "工装短裤",
+      "棒球帽",
+      "清爽"
+    ],
     "stageOutfitSummary": "清爽运动感是重点，适合短款背心、宽松短裤、球鞋和帽子，跳起来要轻快不束缚。"
   },
   {
     "id": "magnetic",
     "danceName": "Magnetic",
-    "aliases": ["magnetic", "磁场", "illit magnetic", "마그네틱"],
+    "aliases": [
+      "magnetic",
+      "磁场",
+      "illit magnetic",
+      "마그네틱"
+    ],
     "artist": "ILLIT",
     "danceType": "女团",
-    "styleTags": ["甜酷", "元气", "Y2K"],
-    "sceneTags": ["练舞房", "舞台", "日常"],
-    "outfitKeywords": ["针织", "短裙", "发夹", "甜酷"],
+    "styleTags": [
+      "甜酷",
+      "元气",
+      "Y2K"
+    ],
+    "sceneTags": [
+      "练舞房",
+      "舞台",
+      "日常"
+    ],
+    "outfitKeywords": [
+      "针织",
+      "短裙",
+      "发夹",
+      "甜酷"
+    ],
     "stageOutfitSummary": "甜甜的吸引力加一点复古 Y2K，适合软糯上衣、短裙、发夹和浅色运动鞋。"
   },
   {
     "id": "drama",
     "danceName": "Drama",
-    "aliases": ["drama", "aespa drama", "drama aespa", "戏剧"],
+    "aliases": [
+      "drama",
+      "aespa drama",
+      "drama aespa",
+      "戏剧"
+    ],
     "artist": "aespa",
     "danceType": "K-pop",
-    "styleTags": ["暗黑", "清冷", "辣妹"],
-    "sceneTags": ["舞台", "夜景", "练舞房"],
-    "outfitKeywords": ["皮革", "金属", "黑色", "短靴"],
+    "styleTags": [
+      "暗黑",
+      "清冷",
+      "辣妹"
+    ],
+    "sceneTags": [
+      "舞台",
+      "夜景",
+      "练舞房"
+    ],
+    "outfitKeywords": [
+      "皮革",
+      "金属",
+      "黑色",
+      "短靴"
+    ],
     "stageOutfitSummary": "强势冷感和舞台压迫感更重要，黑色、金属、皮革和利落线条都很适合。"
   },
   {
     "id": "whiplash",
     "danceName": "Whiplash",
-    "aliases": ["whiplash", "aespa whiplash", "甩鞭", "whip lash"],
+    "aliases": [
+      "whiplash",
+      "aespa whiplash",
+      "甩鞭",
+      "whip lash"
+    ],
     "artist": "aespa",
     "danceType": "Urban",
-    "styleTags": ["清冷", "辣妹", "暗黑"],
-    "sceneTags": ["夜景", "舞台", "路演"],
-    "outfitKeywords": ["银色", "紧身", "墨镜", "机能"],
+    "styleTags": [
+      "清冷",
+      "辣妹",
+      "暗黑"
+    ],
+    "sceneTags": [
+      "夜景",
+      "舞台",
+      "路演"
+    ],
+    "outfitKeywords": [
+      "银色",
+      "紧身",
+      "墨镜",
+      "机能"
+    ],
     "stageOutfitSummary": "冷调未来感和身体线条是重点，适合银色点缀、紧身短上衣、机能下装和酷感配饰。"
   },
   {
     "id": "hype-boy",
     "danceName": "Hype Boy",
-    "aliases": ["hypeboy", "hype boy", "海普男孩", "newjeans hype boy"],
+    "aliases": [
+      "hypeboy",
+      "hype boy",
+      "海普男孩",
+      "newjeans hype boy"
+    ],
     "artist": "NewJeans",
     "danceType": "K-pop",
-    "styleTags": ["运动", "Y2K", "元气"],
-    "sceneTags": ["户外", "练舞房", "路演"],
-    "outfitKeywords": ["卫衣", "牛仔", "球鞋", "棒球帽"],
+    "styleTags": [
+      "运动",
+      "Y2K",
+      "元气"
+    ],
+    "sceneTags": [
+      "户外",
+      "练舞房",
+      "路演"
+    ],
+    "outfitKeywords": [
+      "卫衣",
+      "牛仔",
+      "球鞋",
+      "棒球帽"
+    ],
     "stageOutfitSummary": "校园街头和轻复古气质很适合，宽松上衣、牛仔下装、球鞋会让动作更自然。"
   },
   {
     "id": "kill-this-love",
     "danceName": "Kill This Love",
-    "aliases": ["kill this love", "killthislove", "blackpink kill this love", "杀死这份爱"],
+    "aliases": [
+      "kill this love",
+      "killthislove",
+      "blackpink kill this love",
+      "杀死这份爱"
+    ],
     "artist": "BLACKPINK",
     "danceType": "Jazz",
-    "styleTags": ["辣妹", "暗黑", "甜酷"],
-    "sceneTags": ["舞台", "夜景", "路演"],
-    "outfitKeywords": ["军装", "短靴", "腰带", "皮裙"],
+    "styleTags": [
+      "辣妹",
+      "暗黑",
+      "甜酷"
+    ],
+    "sceneTags": [
+      "舞台",
+      "夜景",
+      "路演"
+    ],
+    "outfitKeywords": [
+      "军装",
+      "短靴",
+      "腰带",
+      "皮裙"
+    ],
     "stageOutfitSummary": "气场要足，适合利落短上衣、腰带、皮裙或工装元素，整体强调力量和比例。"
   },
   {
     "id": "like-jennie",
     "danceName": "Like Jennie",
-    "aliases": ["like jennie", "likejennie", "jennie like jennie", "像Jennie"],
+    "aliases": [
+      "like jennie",
+      "likejennie",
+      "jennie like jennie",
+      "像Jennie"
+    ],
     "artist": "Jennie",
     "danceType": "路演",
-    "styleTags": ["辣妹", "清冷", "Y2K"],
-    "sceneTags": ["路演", "夜景", "日常"],
-    "outfitKeywords": ["吊带", "低腰", "墨镜", "短裙"],
+    "styleTags": [
+      "辣妹",
+      "清冷",
+      "Y2K"
+    ],
+    "sceneTags": [
+      "路演",
+      "夜景",
+      "日常"
+    ],
+    "outfitKeywords": [
+      "吊带",
+      "低腰",
+      "墨镜",
+      "短裙"
+    ],
     "stageOutfitSummary": "松弛但很会拍，适合短吊带、低腰下装、墨镜和一点亮面材质，突出自信和镜头感。"
   }
 ]

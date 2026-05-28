@@ -14,7 +14,7 @@ import danceStyles from './data/danceStyles.json';
 import products from './data/products.json';
 
 const danceTypeOptions = ['K-pop', 'Jazz', '路演', '练舞房', 'Urban', '女团', '其他'];
-const styleOptions = ['甜酷', '辣妹', '清冷', '运动', 'Y2K', '学院', '暗黑', '元气'];
+const styleOptions = ['甜酷', '辣妹', '清冷', '运动', 'Y2K', '学院', '暗黑', '元气', '性感', '甜辣', '妈咪'];
 const sceneOptions = ['练舞房', '户外', '舞台', '路演', '夜景'];
 const budgetOptions = ['100以内', '100-300', '300-500', '500+'];
 const bodyOptions = ['显腿长', '显腰', '遮胯', '不露腰', '方便大动作'];
@@ -136,6 +136,15 @@ function manualToInfo(form, fallbackDance) {
   };
 }
 
+
+function getBudgetOrder(range) {
+  if (range === '100以内') return ['100以内', '100-300', '300-500', '500+'];
+  if (range === '100-300') return ['100-300', '100以内', '300-500', '500+'];
+  if (range === '300-500') return ['300-500', '500+', '100-300', '100以内'];
+  if (range === '500+') return ['500+', '300-500', '100-300', '100以内'];
+  return [];
+}
+
 function scoreProduct(product, info) {
   const keywordScore = (info.outfitKeywords || []).reduce((sum, keyword) => {
     return product.name.includes(keyword) ? sum + 2 : sum;
@@ -146,20 +155,24 @@ function scoreProduct(product, info) {
     intersects(product.sceneTags, info.sceneTags).length * 2 +
     (product.danceTags.includes(info.danceType) ? 2 : 0) +
     intersects(product.bodyTags, info.bodyTags).length * 2 +
-    (info.priceRange && product.priceRange === info.priceRange ? 1 : 0) +
+    (info.priceRange && product.priceRange === info.priceRange ? 4 : 0) +
     keywordScore
   );
 }
 
 function pickProduct(category, info, usedIds, fallbackIndex) {
   const categoryProducts = products.filter((product) => product.category === category);
+
+  const budgetOrder = getBudgetOrder(info.priceRange);
+  const budgetPriority = new Map(budgetOrder.map((range, index) => [range, index]));
   const ranked = categoryProducts
     .map((product, index) => ({
       product,
       index,
       score: scoreProduct(product, info),
+      budgetRank: budgetPriority.get(product.priceRange) ?? 99,
     }))
-    .sort((a, b) => b.score - a.score || a.index - b.index);
+    .sort((a, b) => b.score - a.score || a.budgetRank - b.budgetRank || a.index - b.index);
 
   return (
     ranked.find((item) => !usedIds.has(item.product.id))?.product ||
