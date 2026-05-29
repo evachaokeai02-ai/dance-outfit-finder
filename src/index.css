@@ -52,3 +52,16 @@ button {
 .fancy-btn {
   background-image: linear-gradient(135deg, #fb7185 0%, #f472b6 45%, #a78bfa 100%);
 }
+
+.pet-bob {
+  animation: pet-bob 2.4s ease-in-out infinite;
+}
+
+@keyframes pet-bob {
+  0%, 100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-0.35rem) rotate(3deg);
+  }
+}
