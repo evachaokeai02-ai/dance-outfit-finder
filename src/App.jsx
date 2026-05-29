@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
+  Bot,
   CheckCircle2,
   Copy,
+  Heart,
+  Home,
+  MessageCircle,
   RotateCcw,
   Search,
   ShoppingBag,
   SlidersHorizontal,
   Sparkles,
+  UserRound,
+  UsersRound,
   WandSparkles,
 } from 'lucide-react';
 import danceStyles from './data/danceStyles.json';
@@ -39,6 +45,8 @@ function App() {
   const [finalInfo, setFinalInfo] = useState(null);
   const [notice, setNotice] = useState('');
   const [pddState, setPddState] = useState({ status: 'idle', products: [], error: '' });
+  const [registered, setRegistered] = useState(false);
+  const [petMessage, setPetMessage] = useState('嗨～你来跳我的舞啦？先告诉我今天想跳哪支！');
 
   const activeProducts = useMemo(() => {
     if (pddState.products.length > 0) return [...pddState.products, ...products];
@@ -83,6 +91,10 @@ function App() {
   }
 
   function handleBack() {
+    if (['community', 'chat', 'profile', 'register'].includes(page)) {
+      setPage('home');
+      return;
+    }
     if (page === 'input') {
       setPage('home');
       return;
@@ -141,7 +153,8 @@ function App() {
         document.execCommand('copy');
         document.body.removeChild(textarea);
       }
-      setNotice(`已复制「${look.title}」小红书文案`);
+      setNotice(`已复制「${look.title}」小红书文案，跳完可以去社区晒图～`);
+      setPetMessage('文案复制好啦！要不要把这套 Look 挂到社区灵感墙？');
     } catch {
       setNotice('复制失败，可以手动选中文案复制');
     }
@@ -149,12 +162,23 @@ function App() {
     window.setTimeout(() => setNotice(''), 1800);
   }
 
+  function switchTab(nextPage) {
+    setPage(nextPage);
+    const messages = {
+      home: '主页已就位！今天想挑战哪支舞？',
+      community: '欢迎来到舞友社区，可以晒穿搭，也能挂二手联系方式。',
+      chat: '我在对话室等你，穿搭、客服、尺码都可以问我。',
+      profile: registered ? '这是你的舞搭档案，之前的 Look 都会收在这里。' : '先注册一个舞搭身份吧，我会帮你记住风格偏好。',
+    };
+    setPetMessage(messages[nextPage] || '我在这里陪你搭配～');
+  }
+
   return (
-    <main className="min-h-screen px-4 py-5 text-ink sm:px-6">
-      <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-md flex-col">
+    <main className="min-h-screen px-4 py-5 pb-28 text-ink sm:px-6">
+      <div className="mx-auto flex min-h-[calc(100vh-7rem)] w-full max-w-md flex-col">
         <TopBar page={page} onBack={handleBack} onHome={goInput} />
 
-        {page === 'home' && <HomePage onStart={goInput} />}
+        {page === 'home' && <HomePage onStart={goInput} onOpenChat={() => switchTab('chat')} />}
         {page === 'input' && (
           <InputPage query={query} setQuery={setQuery} onSearch={handleSearch} />
         )}
@@ -171,12 +195,18 @@ function App() {
         {page === 'results' && finalInfo && (
           <ResultsPage info={finalInfo} looks={looks} pddState={pddState} onCopy={copyLook} onRestart={goInput} />
         )}
+        {page === 'community' && <CommunityPage onStart={goInput} />}
+        {page === 'chat' && <ChatPage onStart={goInput} />}
+        {page === 'profile' && (registered ? <ProfilePage onStart={goInput} onOpenCommunity={() => switchTab('community')} /> : <RegisterPage onRegister={() => { setRegistered(true); setPetMessage('注册成功！以后我会记住你的舞蹈人格和搭配偏好。'); setPage('profile'); }} />)}
       </div>
+
+      <PetAssistant message={petMessage} onChat={() => switchTab('chat')} />
+      <BottomNav activePage={page} onNavigate={switchTab} />
 
       <ComplianceNotice />
 
       {notice && (
-        <div className="fixed bottom-5 left-1/2 z-20 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-full bg-ink px-4 py-3 text-center text-sm text-white shadow-card">
+        <div className="fixed bottom-28 left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-full bg-ink px-4 py-3 text-center text-sm text-white shadow-card">
           {notice}
         </div>
       )}
@@ -205,35 +235,45 @@ function TopBar({ page, onBack, onHome }) {
   );
 }
 
-function HomePage({ onStart }) {
+function HomePage({ onStart, onOpenChat }) {
   return (
     <section className="flex flex-1 flex-col justify-center safe-bottom">
       <div className="mb-8">
         <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-semibold text-rose shadow-card">
           <Sparkles size={16} />
-          本地舞蹈穿搭灵感机
+          AI 舞搭 idol 在线营业中
         </div>
         <h1 className="text-5xl font-black leading-tight text-ink sm:text-6xl">舞搭一下</h1>
         <p className="mt-5 max-w-xs text-lg leading-8 text-stone-600">
-          输入你要跳的舞，生成你的出片穿搭
+          嗨～你来跳我的舞啦？输入舞蹈，我陪你挑战、搭衣服、发社区！
         </p>
       </div>
 
       <div className="relative overflow-hidden rounded-[2rem] bg-white p-5 shadow-soft">
         <div className="grid aspect-[5/4] place-items-center rounded-[1.5rem] product-visual" style={{ '--product-bg': visualMap['pink-mint'] }}>
-          <div className="rounded-full bg-white/80 px-5 py-3 text-base font-bold text-ink shadow-card">
-            今日适合跳出漂亮视频
+          <div className="rounded-[1.5rem] bg-white/85 px-5 py-4 text-center text-base font-bold text-ink shadow-card">
+            <p>今日任务：跳出漂亮视频 ✨</p>
+            <p className="mt-2 text-xs text-stone-500">匹配穿搭 · 晒到社区 · 问 AI 搭子</p>
           </div>
         </div>
       </div>
 
-      <button
-        className="fancy-btn mt-7 flex h-14 w-full items-center justify-center gap-2 rounded-full px-5 text-base font-bold text-white shadow-card"
-        onClick={onStart}
-      >
-        <WandSparkles size={20} />
-        开始搭配
-      </button>
+      <div className="mt-7 grid grid-cols-2 gap-3">
+        <button
+          className="fancy-btn flex h-14 items-center justify-center gap-2 rounded-full px-5 text-base font-bold text-white shadow-card"
+          onClick={onStart}
+        >
+          <WandSparkles size={20} />
+          开始搭配
+        </button>
+        <button
+          className="flex h-14 items-center justify-center gap-2 rounded-full bg-white px-5 text-base font-bold text-ink shadow-card"
+          onClick={onOpenChat}
+        >
+          <MessageCircle size={19} />
+          找搭子聊
+        </button>
+      </div>
     </section>
   );
 }
@@ -639,6 +679,222 @@ function TextBlock({ title, text }) {
   );
 }
 
+
+
+const communityPosts = [
+  {
+    id: 'look-wall-1',
+    user: 'Mina',
+    dance: 'Super Shy 练习室',
+    title: '薄荷粉短上衣 + 阔腿裤，跳起来很轻',
+    tag: '可交流二手',
+    contact: '小红书：@minadance',
+  },
+  {
+    id: 'look-wall-2',
+    user: 'Jelly',
+    dance: 'Drama 镜面挑战',
+    title: '黑银 Y2K 套装，适合夜景和地下车库',
+    tag: '穿搭晒单',
+    contact: '评论区蹲同款',
+  },
+  {
+    id: 'look-wall-3',
+    user: 'Nari',
+    dance: 'Like Jennie solo',
+    title: '红色发带 + 低腰裙，镜头记忆点很强',
+    tag: '出片灵感',
+    contact: '微信备注：舞搭',
+  },
+];
+
+const savedLooks = [
+  '甜酷练习室 Look',
+  '女团打歌舞台 Look',
+  '夜景翻跳短视频 Look',
+];
+
+function PetAssistant({ message, onChat }) {
+  return (
+    <button
+      className="fixed bottom-24 right-4 z-30 flex max-w-[17rem] items-end gap-2 text-left sm:right-[calc(50%-13rem)]"
+      onClick={onChat}
+      aria-label="打开 AI 舞搭客服"
+    >
+      <div className="rounded-3xl rounded-br-md border border-white/80 bg-white/90 px-4 py-3 text-xs font-bold leading-5 text-stone-700 shadow-soft backdrop-blur">
+        {message}
+      </div>
+      <div className="pet-bob grid h-14 w-14 shrink-0 place-items-center rounded-[1.25rem] bg-ink text-white shadow-card">
+        <Bot size={28} />
+      </div>
+    </button>
+  );
+}
+
+function BottomNav({ activePage, onNavigate }) {
+  const tabs = [
+    { key: 'home', label: '主页', icon: Home },
+    { key: 'community', label: '社区', icon: UsersRound },
+    { key: 'chat', label: '对话', icon: MessageCircle },
+    { key: 'profile', label: '我的', icon: UserRound },
+  ];
+
+  const normalizedActive = ['input', 'confirm', 'manual', 'results'].includes(activePage) ? 'home' : activePage;
+
+  return (
+    <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-4 pb-3 safe-bottom">
+      <div className="grid grid-cols-4 gap-1 rounded-[1.5rem] border border-white/80 bg-white/90 p-2 shadow-soft backdrop-blur">
+        {tabs.map(({ key, label, icon: Icon }) => {
+          const active = normalizedActive === key;
+          return (
+            <button
+              key={key}
+              className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-2 text-xs font-black transition ${
+                active ? 'bg-ink text-white shadow-card' : 'text-stone-500 hover:bg-blush'
+              }`}
+              onClick={() => onNavigate(key)}
+            >
+              <Icon size={18} />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+function CommunityPage({ onStart }) {
+  return (
+    <section className="pb-8">
+      <PageTitle
+        eyebrow="舞友社区"
+        title="看看大家今天怎么跳、怎么穿"
+        subtitle="这里可以晒翻跳穿搭，也可以挂出跳完闲置的二手信息；小程序只展示联系方式，不参与交易。"
+      />
+
+      <button className="fancy-btn mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-sm font-bold text-white shadow-card" onClick={onStart}>
+        <Sparkles size={18} />
+        先生成我的穿搭再发布
+      </button>
+
+      <div className="mt-6 grid gap-4">
+        {communityPosts.map((post, index) => (
+          <article key={post.id} className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/80 p-4 shadow-soft backdrop-blur">
+            <div className="flex gap-4">
+              <div className="grid h-24 w-24 shrink-0 place-items-center rounded-[1.5rem] product-visual text-center text-sm font-black text-white" style={{ '--product-bg': index % 2 ? visualMap['lavender-blue'] : visualMap['pink-mint'] }}>
+                OOTD
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-black text-ink">@{post.user}</p>
+                  <span className="rounded-full bg-lemon/70 px-2.5 py-1 text-xs font-black text-stone-700">{post.tag}</span>
+                </div>
+                <p className="mt-1 text-xs font-bold text-rose">{post.dance}</p>
+                <h2 className="mt-2 text-base font-black leading-6">{post.title}</h2>
+                <p className="mt-2 text-xs font-semibold text-stone-500">联系方式：{post.contact}</p>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ChatPage({ onStart }) {
+  const quickReplies = ['这支舞适合露腰吗？', '帮我找显腿长的鞋', '想把旧衣服挂社区'];
+
+  return (
+    <section className="pb-8">
+      <PageTitle eyebrow="AI 对话" title="你的舞搭客服 / 代码宠物上线" subtitle="之后可以接入真人客服或 AI idol。现在先用对话样式承接搭配、尺码、社区发布和二手说明。" />
+
+      <div className="mt-6 rounded-[1.75rem] bg-white p-5 shadow-soft">
+        <div className="flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-ink text-white">
+            <Bot size={22} />
+          </div>
+          <div className="rounded-3xl rounded-tl-md bg-blush px-4 py-3 text-sm font-semibold leading-6 text-stone-700">
+            Hi，我是舞搭小偶像。你来跳我的舞啦？把舞名、预算、身材顾虑丢给我，我会陪你从搭配聊到发布。
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-2">
+          {quickReplies.map((reply) => (
+            <button key={reply} className="rounded-2xl border border-rose/10 bg-white px-4 py-3 text-left text-sm font-bold text-stone-700 shadow-card">
+              {reply}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-5 flex gap-2 rounded-full bg-blush p-2">
+          <input className="min-w-0 flex-1 bg-transparent px-3 text-sm font-semibold outline-none" placeholder="输入想问的穿搭问题…" />
+          <button className="rounded-full bg-ink px-4 py-2 text-sm font-black text-white">发送</button>
+        </div>
+      </div>
+
+      <button className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-white px-5 text-base font-bold text-ink shadow-card" onClick={onStart}>
+        <WandSparkles size={19} />
+        直接去搭一套
+      </button>
+    </section>
+  );
+}
+
+function RegisterPage({ onRegister }) {
+  return (
+    <section className="pb-8">
+      <PageTitle eyebrow="注册档案" title="创建你的舞搭身份" subtitle="注册后可以保存之前搭过的衣服、头像、个人信息和偏好，让小程序更像一个互动社区。" />
+
+      <div className="mt-6 rounded-[1.75rem] bg-white p-5 shadow-soft">
+        <div className="mx-auto grid h-24 w-24 place-items-center rounded-[2rem] bg-gradient-to-br from-rose to-violet-400 text-3xl font-black text-white shadow-card">
+          D
+        </div>
+        <label className="mt-6 block text-sm font-black text-stone-600">昵称</label>
+        <input className="mt-2 h-14 w-full rounded-2xl border border-rose/15 bg-blush/50 px-4 py-3 font-semibold outline-none focus:border-rose focus:bg-white" defaultValue="闪闪练习生" />
+        <label className="mt-4 block text-sm font-black text-stone-600">手机号 / 微信</label>
+        <input className="mt-2 h-14 w-full rounded-2xl border border-rose/15 bg-blush/50 px-4 py-3 font-semibold outline-none focus:border-rose focus:bg-white" placeholder="用于社区联系展示前确认" />
+        <button className="fancy-btn mt-6 flex h-14 w-full items-center justify-center rounded-full text-base font-black text-white shadow-card" onClick={onRegister}>
+          完成注册
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ProfilePage({ onStart, onOpenCommunity }) {
+  return (
+    <section className="pb-8">
+      <div className="rounded-[2rem] bg-white p-5 shadow-soft">
+        <div className="flex items-center gap-4">
+          <div className="grid h-20 w-20 place-items-center rounded-[1.75rem] bg-gradient-to-br from-rose to-violet-400 text-2xl font-black text-white shadow-card">D</div>
+          <div>
+            <p className="text-sm font-bold text-rose">已注册舞搭用户</p>
+            <h1 className="mt-1 text-3xl font-black">闪闪练习生</h1>
+            <p className="mt-1 text-sm font-semibold text-stone-500">偏好：女团 · 甜酷 · 显腿长</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.75rem] bg-white/85 p-5 shadow-soft">
+        <h2 className="text-lg font-black">我之前搭过的衣服</h2>
+        <div className="mt-4 grid gap-3">
+          {savedLooks.map((look) => (
+            <div key={look} className="flex items-center justify-between rounded-2xl bg-blush/70 px-4 py-3">
+              <span className="font-bold text-stone-700">{look}</span>
+              <Heart size={18} className="text-rose" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        <button className="flex h-14 items-center justify-center rounded-full bg-ink px-4 text-sm font-black text-white shadow-card" onClick={onStart}>再搭一套</button>
+        <button className="flex h-14 items-center justify-center rounded-full bg-white px-4 text-sm font-black text-ink shadow-card" onClick={onOpenCommunity}>去社区发布</button>
+      </div>
+    </section>
+  );
+}
 
 function ComplianceNotice() {
   return (
