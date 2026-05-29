@@ -1,6 +1,6 @@
 export const danceTypeOptions = ['K-pop', 'Jazz', '路演', '练舞房', 'Urban', '女团', '其他'];
-export const styleOptions = ['甜酷', '辣妹', '清冷', '运动', 'Y2K', '学院', '暗黑', '元气', '性感', '甜辣', '妈咪'];
-export const sceneOptions = ['练舞房', '户外', '舞台', '路演', '夜景'];
+export const styleOptions = ['甜酷', '辣妹', '清冷', '运动', 'Y2K', '学院', '暗黑', '元气', '性感', '甜辣', '妈咪', '红黑', '强势', '未来感'];
+export const sceneOptions = ['练舞房', '户外', '舞台', '路演', '夜景', 'MV'];
 export const budgetOptions = ['50-100', '100-200', '200-300'];
 export const bodyOptions = ['显腿长', '显腰', '遮胯', '不露腰', '方便大动作'];
 
@@ -9,6 +9,7 @@ export const visualMap = {
   'mint-lemon': 'linear-gradient(135deg, #99f6e4 0%, #ecfccb 48%, #fde68a 100%)',
   'ice-lilac': 'linear-gradient(135deg, #dbeafe 0%, #ddd6fe 55%, #f5f3ff 100%)',
   'rose-black': 'linear-gradient(135deg, #fb7185 0%, #7f1d1d 48%, #111827 100%)',
+  'drama-red': 'linear-gradient(135deg, #ef4444 0%, #991b1b 44%, #111827 100%)',
   'cream-blue': 'linear-gradient(135deg, #fff7ed 0%, #bfdbfe 52%, #fef3c7 100%)',
   'black-silver': 'linear-gradient(135deg, #111827 0%, #64748b 50%, #e5e7eb 100%)',
   'blue-yellow': 'linear-gradient(135deg, #bfdbfe 0%, #38bdf8 46%, #fde68a 100%)',
@@ -19,6 +20,9 @@ export const styleConflictMap = {
   性感: ['学院', '甜美', '元气'],
   妈咪: ['学院', '甜美', '元气', '甜酷'],
   辣妹: ['甜美', '元气'],
+  红黑: ['甜美', '元气', '学院'],
+  强势: ['甜美', '元气', '学院'],
+  未来感: ['甜美', '学院'],
   暗黑: ['甜美', '元气', '清新'],
   学院: ['性感', '妈咪', '暗黑'],
   甜美: ['性感', '妈咪', '暗黑'],

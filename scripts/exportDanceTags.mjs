@@ -8,6 +8,10 @@ const outXlsxFile = path.join(outDir, 'dance-tags-audit.xlsx');
 const outCsvFile = path.join(outDir, 'dance-tags-audit.csv');
 
 const pipe = (items) => (Array.isArray(items) ? items.join('|') : '');
+const profileSummary = (profiles) =>
+  Array.isArray(profiles)
+    ? profiles.map((profile) => `${profile.name}:${pipe(profile.styleTags)}:${pipe(profile.outfitKeywords)}`).join(' || ')
+    : '';
 const csvEscape = (value) => {
   const text = String(value ?? '');
   if (!/[",\n]/.test(text)) return text;
@@ -25,7 +29,7 @@ const sheets = [
   {
     name: 'Dance Tags',
     rows: [
-      ['id', 'danceName', 'artist', 'danceType', 'aliases_pipe', 'styleTags_pipe', 'sceneTags_pipe', 'outfitKeywords_pipe', 'avoidKeywords_pipe', 'stageOutfitSummary', 'reviewNotes'],
+      ['id', 'danceName', 'artist', 'danceType', 'aliases_pipe', 'styleTags_pipe', 'sceneTags_pipe', 'outfitKeywords_pipe', 'avoidKeywords_pipe', 'stageOutfitProfiles', 'stageOutfitSummary', 'reviewNotes'],
       ...danceStyles.map((dance) => [
         dance.id,
         dance.danceName,
@@ -36,6 +40,7 @@ const sheets = [
         pipe(dance.sceneTags),
         pipe(dance.outfitKeywords),
         pipe(dance.avoidKeywords),
+        profileSummary(dance.stageOutfitProfiles),
         dance.stageOutfitSummary || '',
         '',
       ]),
@@ -71,7 +76,8 @@ const sheets = [
       ['budget exact match', '+4', '用户选择预算后，精确匹配加分。'],
       ['keyword in product name', '+2 each', '穿搭关键词命中商品名时加分。'],
       ['avoidKeywords in product name/style', '-6 each', '舞蹈标记不适合的元素会被明显降权，例如性感妈咪风避开蝴蝶结/学院感。'],
-      ['style conflict', '-4 each', '性感/妈咪/辣妹与学院/甜美/元气等冲突风格降权，反向同理。'],
+      ['style conflict', '-4 each', '性感/妈咪/辣妹/红黑/强势与学院/甜美/元气等冲突风格降权，反向同理。'],
+      ['stageOutfitProfiles', 'data priority', '一首歌可维护多个打歌舞台 / MV 造型层级，推荐会聚合 profile 中的风格和单品关键词。'],
     ],
   },
 ];

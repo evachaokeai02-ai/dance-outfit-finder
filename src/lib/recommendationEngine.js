@@ -25,17 +25,22 @@ export function findDance(query, danceStyles) {
   });
 }
 
+function flattenProfileTags(dance, key) {
+  return (dance.stageOutfitProfiles || []).flatMap((profile) => profile[key] || []);
+}
+
 export function danceToInfo(dance) {
   return {
     source: 'match',
     danceName: dance.danceName,
     artist: dance.artist,
     danceType: dance.danceType,
-    styleTags: dance.styleTags,
+    styleTags: unique([...(dance.styleTags || []), ...flattenProfileTags(dance, 'styleTags')]),
     sceneTags: dance.sceneTags,
-    outfitKeywords: dance.outfitKeywords,
+    outfitKeywords: unique([...(dance.outfitKeywords || []), ...flattenProfileTags(dance, 'outfitKeywords')]),
     avoidKeywords: dance.avoidKeywords || [],
     stageOutfitSummary: dance.stageOutfitSummary,
+    stageOutfitProfiles: dance.stageOutfitProfiles || [],
     priceRange: '',
     bodyTags: [],
     freeText: '',
@@ -88,6 +93,7 @@ function getProductTerms(product) {
     ...(product.sceneTags || []),
     ...(product.bodyTags || []),
     ...(product.danceTags || []),
+    product.pdd?.salesTip,
   ].join(' ');
 }
 
@@ -120,7 +126,7 @@ function scoreProduct(product, info) {
   return (
     intersects(product.styleTags, info.styleTags).length * 3 +
     intersects(product.sceneTags, info.sceneTags).length * 2 +
-    (product.danceTags.includes(info.danceType) ? 2 : 0) +
+    ((product.danceTags || []).includes(info.danceType) ? 2 : 0) +
     intersects(product.bodyTags, info.bodyTags).length * 2 +
     (info.priceRange && product.priceRange === info.priceRange ? 4 : 0) +
     keywordScore -
