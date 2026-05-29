@@ -15,6 +15,16 @@ export const visualMap = {
   'silver-cyan': 'linear-gradient(135deg, #e5e7eb 0%, #a5f3fc 48%, #475569 100%)',
 };
 
+export const styleConflictMap = {
+  性感: ['学院', '甜美', '元气'],
+  妈咪: ['学院', '甜美', '元气', '甜酷'],
+  辣妹: ['甜美', '元气'],
+  暗黑: ['甜美', '元气', '清新'],
+  学院: ['性感', '妈咪', '暗黑'],
+  甜美: ['性感', '妈咪', '暗黑'],
+  元气: ['性感', '妈咪', '暗黑'],
+};
+
 export const lookConfigs = [
   {
     key: 'stage',

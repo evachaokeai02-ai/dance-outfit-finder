@@ -1,4 +1,4 @@
-import { lookConfigs } from '../config/recommendationConfig';
+import { lookConfigs, styleConflictMap } from '../config/recommendationConfig';
 
 export function normalizeText(value) {
   return String(value || '')
@@ -34,6 +34,7 @@ export function danceToInfo(dance) {
     styleTags: dance.styleTags,
     sceneTags: dance.sceneTags,
     outfitKeywords: dance.outfitKeywords,
+    avoidKeywords: dance.avoidKeywords || [],
     stageOutfitSummary: dance.stageOutfitSummary,
     priceRange: '',
     bodyTags: [],
@@ -67,6 +68,7 @@ export function manualToInfo(form, fallbackDance) {
       form.freeText ||
       `${form.danceType} 舞蹈搭配 ${form.style} 风格，适合 ${form.scene} 场景，整体要兼顾出片和动作舒展。`,
     priceRange: form.budget,
+    avoidKeywords: [],
     bodyTags,
     freeText: form.freeText,
   };
@@ -79,10 +81,41 @@ function getBudgetOrder(range) {
   return ['100-300', '100以内', '300-500', '500+'];
 }
 
+function getProductTerms(product) {
+  return [
+    product.name,
+    ...(product.styleTags || []),
+    ...(product.sceneTags || []),
+    ...(product.bodyTags || []),
+    ...(product.danceTags || []),
+  ].join(' ');
+}
+
+function getConflictTags(styleTags = []) {
+  return unique(styleTags.flatMap((tag) => styleConflictMap[tag] || []));
+}
+
+function getCompatibleExtraStyles(baseStyles = [], extraStyles = [], avoidKeywords = []) {
+  const baseConflicts = getConflictTags(baseStyles);
+  return (extraStyles || []).filter((tag) => {
+    const extraConflicts = styleConflictMap[tag] || [];
+    return (
+      !baseConflicts.includes(tag) &&
+      !extraConflicts.some((conflict) => baseStyles.includes(conflict)) &&
+      !avoidKeywords.includes(tag)
+    );
+  });
+}
+
 function scoreProduct(product, info) {
+  const productTerms = getProductTerms(product);
   const keywordScore = (info.outfitKeywords || []).reduce((sum, keyword) => {
-    return product.name.includes(keyword) ? sum + 2 : sum;
+    return productTerms.includes(keyword) ? sum + 2 : sum;
   }, 0);
+  const avoidPenalty = (info.avoidKeywords || []).reduce((sum, keyword) => {
+    return productTerms.includes(keyword) ? sum + 6 : sum;
+  }, 0);
+  const conflictPenalty = intersects(product.styleTags, getConflictTags(info.styleTags)).length * 4;
 
   return (
     intersects(product.styleTags, info.styleTags).length * 3 +
@@ -90,7 +123,9 @@ function scoreProduct(product, info) {
     (product.danceTags.includes(info.danceType) ? 2 : 0) +
     intersects(product.bodyTags, info.bodyTags).length * 2 +
     (info.priceRange && product.priceRange === info.priceRange ? 4 : 0) +
-    keywordScore
+    keywordScore -
+    avoidPenalty -
+    conflictPenalty
   );
 }
 
@@ -121,7 +156,10 @@ export function buildLooks(info, products) {
   return lookConfigs.map((config, index) => {
     const lookInfo = {
       ...info,
-      styleTags: unique([...(info.styleTags || []), ...(config.extraStyles || [])]),
+      styleTags: unique([
+        ...(info.styleTags || []),
+        ...getCompatibleExtraStyles(info.styleTags, config.extraStyles, info.avoidKeywords),
+      ]),
       sceneTags: unique([...(info.sceneTags || []), ...(config.extraScenes || [])]),
       bodyTags: unique([...(info.bodyTags || []), ...(config.extraBody || [])]),
     };
