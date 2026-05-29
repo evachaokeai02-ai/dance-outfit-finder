@@ -2,8 +2,19 @@ import { unique } from './recommendationEngine';
 
 const CACHE_KEY = 'dance-outfit-kpop-v1';
 
+function flattenProfileTags(dance, key) {
+  return (dance.stageOutfitProfiles || []).flatMap((profile) => profile[key] || []);
+}
+
 function makeSearchTokens(dance) {
-  return unique([dance.danceName, ...(dance.aliases || []), dance.artist, ...(dance.styleTags || [])]);
+  return unique([
+    dance.danceName,
+    ...(dance.aliases || []),
+    dance.artist,
+    ...(dance.styleTags || []),
+    ...flattenProfileTags(dance, 'styleTags'),
+    ...flattenProfileTags(dance, 'outfitKeywords'),
+  ]);
 }
 
 export function normalizeDanceRecord(dance) {
@@ -14,7 +25,8 @@ export function normalizeDanceRecord(dance) {
     danceType: dance.danceType,
     styleTags: dance.styleTags || [],
     sceneTags: dance.sceneTags || [],
-    outfitKeywords: dance.outfitKeywords || [],
+    outfitKeywords: unique([...(dance.outfitKeywords || []), ...flattenProfileTags(dance, 'outfitKeywords')]),
+    stageOutfitProfiles: dance.stageOutfitProfiles || [],
     stageOutfitSummary: dance.stageOutfitSummary || '',
     searchTokens: makeSearchTokens(dance),
   };

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -29,6 +29,7 @@ import {
   manualToInfo,
 } from './lib/recommendationEngine';
 import { getFallbackKpopKeywords, getKpopSuggestions } from './lib/dancePipeline';
+import { fetchPddProducts } from './lib/pddProducts';
 
 function App() {
   const [page, setPage] = useState('home');
@@ -37,13 +38,46 @@ function App() {
   const [manualForm, setManualForm] = useState(makeEmptyForm());
   const [finalInfo, setFinalInfo] = useState(null);
   const [notice, setNotice] = useState('');
+  const [pddState, setPddState] = useState({ status: 'idle', products: [], error: '' });
 
-  const looks = useMemo(() => (finalInfo ? buildLooks(finalInfo, products) : []), [finalInfo]);
+  const activeProducts = useMemo(() => {
+    if (pddState.products.length > 0) return [...pddState.products, ...products];
+    return products;
+  }, [pddState.products]);
+  const looks = useMemo(() => (finalInfo ? buildLooks(finalInfo, activeProducts) : []), [activeProducts, finalInfo]);
+
+  useEffect(() => {
+    if (!finalInfo) {
+      setPddState({ status: 'idle', products: [], error: '' });
+      return undefined;
+    }
+
+    let cancelled = false;
+    setPddState({ status: 'loading', products: [], error: '' });
+
+    fetchPddProducts(finalInfo)
+      .then((data) => {
+        if (cancelled) return;
+        if (data.enabled && data.products?.length) {
+          setPddState({ status: 'ready', products: data.products, error: '' });
+          return;
+        }
+        setPddState({ status: data.enabled === false ? 'disabled' : 'empty', products: [], error: data.error || '' });
+      })
+      .catch((error) => {
+        if (!cancelled) setPddState({ status: 'error', products: [], error: error.message });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [finalInfo]);
 
   function goInput() {
     setQuery('');
     setMatchedDance(null);
     setFinalInfo(null);
+    setPddState({ status: 'idle', products: [], error: '' });
     setManualForm(makeEmptyForm());
     setPage('input');
   }
@@ -135,7 +169,7 @@ function App() {
           <ManualPage form={manualForm} setForm={setManualForm} onGenerate={generateFromManual} />
         )}
         {page === 'results' && finalInfo && (
-          <ResultsPage info={finalInfo} looks={looks} onCopy={copyLook} onRestart={goInput} />
+          <ResultsPage info={finalInfo} looks={looks} pddState={pddState} onCopy={copyLook} onRestart={goInput} />
         )}
       </div>
 
@@ -302,6 +336,20 @@ function ConfirmPage({ dance, onGenerate, onAdjust }) {
         <InfoBlock title="适合场景" items={dance.sceneTags} />
         <InfoBlock title="打歌服关键词" items={dance.outfitKeywords} />
 
+        {dance.stageOutfitProfiles?.length > 0 && (
+          <div className="mt-5 border-t border-rose/10 pt-5">
+            <p className="text-sm font-bold text-stone-500">打歌服 / MV 参考层级</p>
+            <div className="mt-3 grid gap-3">
+              {dance.stageOutfitProfiles.map((profile) => (
+                <div key={profile.name} className="rounded-2xl bg-blush/60 p-3">
+                  <p className="text-sm font-black text-ink">{profile.name}</p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-stone-600">{profile.summary}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-5 border-t border-rose/10 pt-5">
           <p className="text-sm font-bold text-stone-500">风格归纳说明</p>
           <p className="mt-2 leading-7 text-stone-700">{dance.stageOutfitSummary}</p>
@@ -371,19 +419,23 @@ function ManualPage({ form, setForm, onGenerate }) {
   );
 }
 
-function ResultsPage({ info, looks, onCopy, onRestart }) {
+function ResultsPage({ info, looks, pddState, onCopy, onRestart }) {
   return (
     <section className="pb-8">
       <PageTitle eyebrow="搭配完成" title={`《${info.danceName}》的 3 套出片 Look`} subtitle="每套都按风格、场景、预算和动作需求做了本地打分推荐。" />
 
       <div className="mt-5 flex flex-wrap gap-2">
-        <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">示例商品</span>
+        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${pddState.status === 'ready' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+          {pddState.status === 'ready' ? '拼多多实时商品' : pddState.status === 'loading' ? '正在连接拼多多' : '示例商品'}
+        </span>
         {[info.danceType, ...info.styleTags, ...info.sceneTags, ...info.bodyTags].filter(Boolean).map((tag) => (
           <span key={tag} className="rounded-full bg-white px-3 py-2 text-sm font-bold text-stone-600 shadow-card">
             {tag}
           </span>
         ))}
       </div>
+
+      <PddStatus state={pddState} />
 
       <div className="mt-6 grid gap-5">
         {looks.map((look) => (
@@ -436,7 +488,9 @@ function LookCard({ look, info, onCopy }) {
       <TextBlock title="拍摄建议" text={look.photoTip} />
 
       <div className="mt-5 flex flex-wrap gap-2">
-        <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">示例商品</span>
+        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${items.some(([, product]) => product.source === 'pdd') ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+          {items.some(([, product]) => product.source === 'pdd') ? '拼多多实时商品' : '示例商品'}
+        </span>
         {items.map(([label, product]) => (
           <a
             key={product.id}
@@ -460,9 +514,26 @@ function LookCard({ look, info, onCopy }) {
       </button>
 
       <p className="mt-3 text-xs leading-5 text-stone-400">
-        文案会包含《{info.danceName}》、单品名称、推荐理由和拍摄建议。当前商品链接为示例链接，后续可接拼多多 API 做实时搜索。
+        文案会包含《{info.danceName}》、单品名称、推荐理由和拍摄建议；如果环境变量已配置，会优先展示拼多多实时商品链接。
       </p>
     </article>
+  );
+}
+
+function PddStatus({ state }) {
+  if (state.status === 'idle' || state.status === 'ready') return null;
+
+  const textMap = {
+    loading: '正在按这支舞的打歌服关键词连接拼多多商品库，先用本地候选保证页面可用。',
+    disabled: '拼多多 API 已接入：部署后配置 PDD_CLIENT_ID / PDD_CLIENT_SECRET / PDD_PID 即可切换实时商品。',
+    empty: '拼多多 API 暂无匹配商品，当前展示本地候选。',
+    error: '拼多多 API 本次请求失败，当前展示本地候选。',
+  };
+
+  return (
+    <div className="mt-5 rounded-3xl border border-amber-100 bg-amber-50/80 p-4 text-sm font-semibold leading-6 text-amber-800">
+      {textMap[state.status] || textMap.error}
+    </div>
   );
 }
 
@@ -473,6 +544,7 @@ function ProductRow({ label, product }) {
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold text-stone-400">{label}</p>
         <p className="truncate text-sm font-black text-ink">{product.name}</p>
+        {product.pdd?.salesTip && <p className="mt-0.5 text-xs font-semibold text-emerald-600">拼多多 {product.pdd.salesTip}</p>}
       </div>
       <span className="shrink-0 rounded-full bg-lemon/70 px-2.5 py-1 text-xs font-bold text-stone-700">
         {product.priceRange}
@@ -484,13 +556,17 @@ function ProductRow({ label, product }) {
 function ProductVisual({ product, small = false }) {
   return (
     <div
-      className={`grid shrink-0 place-items-center rounded-2xl product-visual ${small ? 'h-12 w-12' : 'h-20 w-20'}`}
+      className={`grid shrink-0 place-items-center overflow-hidden rounded-2xl product-visual ${small ? 'h-12 w-12' : 'h-20 w-20'}`}
       style={{ '--product-bg': visualMap[product.image] || visualMap['pink-mint'] }}
       aria-label={product.name}
     >
-      <span className={`${small ? 'text-xs' : 'text-sm'} font-black text-white drop-shadow`}>
-        {categoryName(product.category)}
-      </span>
+      {product.pdd?.thumbUrl ? (
+        <img className="h-full w-full object-cover" src={product.pdd.thumbUrl} alt={product.name} loading="lazy" />
+      ) : (
+        <span className={`${small ? 'text-xs' : 'text-sm'} font-black text-white drop-shadow`}>
+          {categoryName(product.category)}
+        </span>
+      )}
     </div>
   );
 }
