@@ -611,21 +611,10 @@ function LookCard({ look, info, onCopy }) {
       <TextBlock title="拍摄建议" text={look.photoTip} />
 
       <div className="mt-5 flex flex-wrap gap-2">
-        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${items.some(([, product]) => product.source === 'pdd') ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-          {items.some(([, product]) => product.source === 'pdd') ? '拼多多实时商品' : '示例商品'}
+        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${items.some(([, product]) => product.source === 'pdd') ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+          <ShoppingBag size={14} />
+          {items.some(([, product]) => product.source === 'pdd') ? '拼多多实时商品 · 点商品图打开' : '示例商品 · 点商品图打开'}
         </span>
-        {items.map(([label, product]) => (
-          <a
-            key={product.id}
-            href={product.link}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-full bg-ink px-3 py-2 text-xs font-bold text-white"
-          >
-            <ShoppingBag size={14} />
-            {label}链接
-          </a>
-        ))}
       </div>
 
       <button
@@ -689,19 +678,35 @@ function ProductRow({ label, product }) {
 }
 
 function ProductVisual({ product, small = false }) {
+  const visualContent = product.pdd?.thumbUrl ? (
+    <img className="h-full w-full object-cover" src={product.pdd.thumbUrl} alt={product.name} loading="lazy" referrerPolicy="no-referrer" />
+  ) : (
+    <span className={`${small ? 'text-xs' : 'text-sm'} font-black text-white drop-shadow`}>
+      {categoryName(product.category)}
+    </span>
+  );
+  const className = `grid shrink-0 place-items-center overflow-hidden rounded-2xl product-visual ${small ? 'h-12 w-12' : 'h-20 w-20'} ${product.link ? 'transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-rose focus:ring-offset-2' : ''}`;
+  const style = { '--product-bg': visualMap[product.image] || visualMap['pink-mint'] };
+
+  if (product.link) {
+    return (
+      <a
+        className={className}
+        style={style}
+        href={product.link}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`打开${product.name}商品链接`}
+        title="点击图片打开商品链接"
+      >
+        {visualContent}
+      </a>
+    );
+  }
+
   return (
-    <div
-      className={`grid shrink-0 place-items-center overflow-hidden rounded-2xl product-visual ${small ? 'h-12 w-12' : 'h-20 w-20'}`}
-      style={{ '--product-bg': visualMap[product.image] || visualMap['pink-mint'] }}
-      aria-label={product.name}
-    >
-      {product.pdd?.thumbUrl ? (
-        <img className="h-full w-full object-cover" src={product.pdd.thumbUrl} alt={product.name} loading="lazy" />
-      ) : (
-        <span className={`${small ? 'text-xs' : 'text-sm'} font-black text-white drop-shadow`}>
-          {categoryName(product.category)}
-        </span>
-      )}
+    <div className={className} style={style} aria-label={product.name}>
+      {visualContent}
     </div>
   );
 }
