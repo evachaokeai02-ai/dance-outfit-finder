@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Bot,
@@ -19,6 +19,7 @@ import {
 import danceStyles from './data/danceStyles.json';
 import products from './data/products.json';
 import {
+  avoidOptions,
   bodyOptions,
   budgetOptions,
   danceTypeOptions,
@@ -36,6 +37,7 @@ import {
 } from './lib/recommendationEngine';
 import { getFallbackKpopKeywords, getKpopSuggestions } from './lib/dancePipeline';
 import { fetchPddProducts } from './lib/pddProducts';
+import { PROFILE_DIRECT_CONFIDENCE, fetchOutfitProfile, logOutfitEvent, profileToManualForm } from './lib/outfitProfile';
 
 function App() {
   const [page, setPage] = useState('home');
@@ -44,6 +46,8 @@ function App() {
   const [manualForm, setManualForm] = useState(makeEmptyForm());
   const [finalInfo, setFinalInfo] = useState(null);
   const [notice, setNotice] = useState('');
+  const [isProfiling, setIsProfiling] = useState(false);
+  const loggedOutfitKeyRef = useRef('');
   const [pddState, setPddState] = useState({ status: 'idle', products: [], error: '' });
   const [registered, setRegistered] = useState(false);
   const [petMessage, setPetMessage] = useState('嗨～你来跳我的舞啦？先告诉我今天想跳哪支！');
@@ -81,11 +85,40 @@ function App() {
     };
   }, [finalInfo]);
 
+  useEffect(() => {
+    if (!finalInfo || !looks.length || ['idle', 'loading'].includes(pddState.status)) return;
+
+    const eventKey = `${finalInfo.rawQuery || finalInfo.danceName}:${pddState.status}:${looks.map((look) => look.title).join('|')}`;
+    if (loggedOutfitKeyRef.current === eventKey) return;
+    loggedOutfitKeyRef.current = eventKey;
+
+    logOutfitEvent({
+      eventType: 'outfit_generated',
+      rawQuery: finalInfo.rawQuery || finalInfo.danceName,
+      profile: finalInfo,
+      products: activeProducts
+        .filter((product) => product.source === 'pdd')
+        .map((product) => ({ id: product.id, name: product.name, category: product.category, pdd: product.pdd })),
+      looks: looks.map((look) => ({
+        key: look.key,
+        title: look.title,
+        products: [look.top, look.bottom, look.shoes, look.accessory].map((product) => ({
+          id: product.id,
+          name: product.name,
+          category: product.category,
+          source: product.source || 'local',
+        })),
+      })),
+      metadata: { pddStatus: pddState.status, appFlow: 'profile-first' },
+    }).catch(() => {});
+  }, [activeProducts, finalInfo, looks, pddState.status]);
+
   function goInput() {
     setQuery('');
     setMatchedDance(null);
     setFinalInfo(null);
     setPddState({ status: 'idle', products: [], error: '' });
+    loggedOutfitKeyRef.current = '';
     setManualForm(makeEmptyForm());
     setPage('input');
   }
@@ -112,17 +145,47 @@ function App() {
     }
   }
 
-  function handleSearch() {
-    const dance = findDance(query, danceStyles);
-    if (dance) {
-      setMatchedDance(dance);
-      setManualForm(makeEmptyForm(dance));
-      setPage('confirm');
-      return;
+  async function handleSearch() {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery || isProfiling) return;
+
+    setIsProfiling(true);
+    setNotice('正在生成结构化标签，不用写长 prompt～');
+
+    try {
+      const data = await fetchOutfitProfile(trimmedQuery);
+      const localDance = findDance(data.profile?.danceName || trimmedQuery, danceStyles);
+      setMatchedDance(localDance || null);
+
+      if (!data.needsReview && data.confidence >= PROFILE_DIRECT_CONFIDENCE) {
+        setFinalInfo(data.profile);
+        setManualForm(profileToManualForm(data.profile));
+        setPage('results');
+        setNotice(`已生成「${data.profile.danceName}」标签，正在匹配穿搭。`);
+        return;
+      }
+
+      setManualForm(profileToManualForm(data.profile));
+      setPage('manual');
+      setNotice('这条搜索置信度偏低，先帮你填好标签，可以点几下再生成。');
+    } catch (error) {
+      const dance = findDance(trimmedQuery, danceStyles);
+      if (dance) {
+        setMatchedDance(dance);
+        setManualForm(makeEmptyForm(dance));
+        setFinalInfo(danceToInfo(dance));
+        setPage('results');
+        setNotice('模型标签接口暂不可用，已用本地曲库标签生成。');
+        return;
+      }
+
+      setMatchedDance(null);
+      setManualForm({ ...makeEmptyForm(), danceName: trimmedQuery || '自定义舞蹈' });
+      setPage('manual');
+      setNotice('模型标签接口暂不可用，先用手动标签生成。');
+    } finally {
+      setIsProfiling(false);
     }
-    setMatchedDance(null);
-    setManualForm({ ...makeEmptyForm(), danceName: query.trim() || '自定义舞蹈' });
-    setPage('manual');
   }
 
   function generateFromDance() {
@@ -180,7 +243,7 @@ function App() {
 
         {page === 'home' && <HomePage onStart={goInput} onOpenChat={() => switchTab('chat')} />}
         {page === 'input' && (
-          <InputPage query={query} setQuery={setQuery} onSearch={handleSearch} />
+          <InputPage query={query} setQuery={setQuery} onSearch={handleSearch} isProfiling={isProfiling} />
         )}
         {page === 'confirm' && matchedDance && (
           <ConfirmPage
@@ -278,14 +341,14 @@ function HomePage({ onStart, onOpenChat }) {
   );
 }
 
-function InputPage({ query, setQuery, onSearch }) {
+function InputPage({ query, setQuery, onSearch, isProfiling }) {
   const [onlyKpop, setOnlyKpop] = useState(true);
   const suggestions = useMemo(() => getKpopSuggestions(danceStyles, onlyKpop, 8), [onlyKpop]);
   const fallbackKeywords = getFallbackKpopKeywords();
 
   return (
     <section className="flex flex-1 flex-col pt-8 safe-bottom">
-      <PageTitle eyebrow="第一步" title="你今天要跳哪支舞？" subtitle="先支持 K-pop / 女团舞，输入舞蹈名或歌曲名，我会从本地舞蹈库里识别风格。" />
+      <PageTitle eyebrow="第一步" title="你今天要跳哪支舞？" subtitle="不用写长 prompt：输入舞名后直接点标签，后台会按标签去生成穿搭和商品关键词。" />
 
       <div className="glass-panel mt-7 rounded-[1.75rem] p-5 shadow-soft">
         <label className="text-sm font-bold text-stone-600" htmlFor="dance-input">
@@ -296,7 +359,7 @@ function InputPage({ query, setQuery, onSearch }) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') onSearch();
+            if (event.key === 'Enter' && !isProfiling) onSearch();
           }}
           placeholder="比如 Super Shy、Drama、Like Jennie"
           className="mt-3 h-14 w-full rounded-2xl border border-rose/15 bg-blush/50 px-4 text-base outline-none transition focus:border-rose focus:bg-white"
@@ -304,10 +367,10 @@ function InputPage({ query, setQuery, onSearch }) {
         <button
           className="fancy-btn mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-base font-bold text-white shadow-card disabled:cursor-not-allowed disabled:bg-stone-300 disabled:bg-none"
           onClick={onSearch}
-          disabled={!query.trim()}
+          disabled={!query.trim() || isProfiling}
         >
           <Search size={19} />
-          识别舞蹈风格
+          {isProfiling ? '生成中...' : '生成默认标签'}
         </button>
       </div>
 
@@ -358,7 +421,7 @@ function InputPage({ query, setQuery, onSearch }) {
 function ConfirmPage({ dance, onGenerate, onAdjust }) {
   return (
     <section className="pb-6">
-      <PageTitle eyebrow="匹配成功" title="确认这支舞的穿搭方向" subtitle="如果感觉不对，可以手动调整风格、预算和身材诉求。" />
+      <PageTitle eyebrow="匹配成功" title="系统先帮你打好标签" subtitle="不需要描述一大段；确认这些风格、场景和关键词，或者点一下去微调标签。" />
 
       <div className="mt-6 rounded-[1.75rem] bg-white p-5 shadow-soft">
         <div className="flex items-start justify-between gap-4">
@@ -402,14 +465,14 @@ function ConfirmPage({ dance, onGenerate, onAdjust }) {
           onClick={onGenerate}
         >
           <WandSparkles size={20} />
-          生成穿搭
+          按这些标签生成
         </button>
         <button
           className="flex h-14 items-center justify-center gap-2 rounded-full bg-white px-5 py-4 text-base font-bold text-ink shadow-card"
           onClick={onAdjust}
         >
           <SlidersHorizontal size={19} />
-          我想调整
+          微调标签
         </button>
       </div>
     </section>
@@ -418,33 +481,53 @@ function ConfirmPage({ dance, onGenerate, onAdjust }) {
 
 function ManualPage({ form, setForm, onGenerate }) {
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const selectedTags = [form.danceType, form.style, form.scene, form.body, form.budget, form.avoid].filter(
+    (tag) => tag && tag !== '无特别避雷'
+  );
 
   return (
     <section className="pb-6">
-      <PageTitle eyebrow="手动补充" title="告诉我你想要的感觉" subtitle="匹配不到也没关系，选几个方向一样能生成三套 Look。" />
+      <PageTitle eyebrow="标签生成" title="点几个标签就能搭" subtitle="不用写成聊天式需求，先选 vibe、场景、预算和避雷点，后台再把标签转成商品搜索词。" />
 
-      <div className="mt-6 rounded-[1.75rem] bg-white p-5 shadow-soft">
+      <div className="mt-6 rounded-[1.75rem] border border-rose/10 bg-white p-5 shadow-soft">
+        <div className="rounded-3xl bg-blush/70 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-rose">当前标签</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {selectedTags.map((tag) => (
+              <span key={tag} className="rounded-full bg-white px-3 py-2 text-xs font-black text-ink shadow-card">
+                {tag}
+              </span>
+            ))}
+          </div>
+          <p className="mt-3 text-xs font-semibold leading-5 text-stone-500">
+            这些标签会决定风格、动作安全感和商品搜索方向；备注只是补充，不是必填。
+          </p>
+        </div>
+
         <FieldTitle title="舞蹈类型" />
         <ChipGroup options={danceTypeOptions} value={form.danceType} onChange={(value) => update('danceType', value)} />
 
-        <FieldTitle title="风格" />
+        <FieldTitle title="风格 vibe" />
         <ChipGroup options={styleOptions} value={form.style} onChange={(value) => update('style', value)} />
 
-        <FieldTitle title="场景" />
+        <FieldTitle title="使用场景" />
         <ChipGroup options={sceneOptions} value={form.scene} onChange={(value) => update('scene', value)} />
 
         <FieldTitle title="预算" />
         <ChipGroup options={budgetOptions} value={form.budget} onChange={(value) => update('budget', value)} />
 
-        <FieldTitle title="身材诉求" />
+        <FieldTitle title="身材 / 动作诉求" />
         <ChipGroup options={bodyOptions} value={form.body} onChange={(value) => update('body', value)} />
 
-        <FieldTitle title="想要的穿搭感觉" optional />
+        <FieldTitle title="避雷点" />
+        <ChipGroup options={avoidOptions} value={form.avoid} onChange={(value) => update('avoid', value)} />
+
+        <FieldTitle title="补充备注" optional />
         <textarea
           value={form.freeText}
           onChange={(event) => update('freeText', event.target.value)}
-          placeholder="比如不想太露、想像打歌服一点、要适合夜景拍摄"
-          className="mt-3 min-h-28 w-full resize-none rounded-2xl border border-rose/15 bg-blush/50 px-4 py-3 leading-7 outline-none transition focus:border-rose focus:bg-white"
+          placeholder="可不填；比如想更像打歌服、要适合夜景拍摄"
+          className="mt-3 min-h-20 w-full resize-none rounded-2xl border border-rose/15 bg-blush/50 px-4 py-3 leading-7 outline-none transition focus:border-rose focus:bg-white"
         />
       </div>
 
@@ -453,7 +536,7 @@ function ManualPage({ form, setForm, onGenerate }) {
         onClick={onGenerate}
       >
         <WandSparkles size={20} />
-        生成穿搭
+        按标签生成穿搭
       </button>
     </section>
   );
@@ -462,7 +545,7 @@ function ManualPage({ form, setForm, onGenerate }) {
 function ResultsPage({ info, looks, pddState, onCopy, onRestart }) {
   return (
     <section className="pb-8">
-      <PageTitle eyebrow="搭配完成" title={`《${info.danceName}》的 3 套出片 Look`} subtitle="每套都按风格、场景、预算和动作需求做了本地打分推荐。" />
+      <PageTitle eyebrow="搭配完成" title={`《${info.danceName}》的 3 套出片 Look`} subtitle="每套都按你选的标签、预算和动作需求做了打分推荐。" />
 
       <div className="mt-5 flex flex-wrap gap-2">
         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${pddState.status === 'ready' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>

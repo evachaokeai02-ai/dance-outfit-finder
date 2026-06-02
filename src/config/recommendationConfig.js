@@ -1,8 +1,9 @@
 export const danceTypeOptions = ['K-pop', 'Jazz', '路演', '练舞房', 'Urban', '女团', '其他'];
 export const styleOptions = ['甜酷', '辣妹', '清冷', '运动', 'Y2K', '学院', '暗黑', '元气', '性感', '甜辣', '妈咪', '红黑', '强势', '未来感'];
-export const sceneOptions = ['练舞房', '户外', '舞台', '路演', '夜景', 'MV'];
-export const budgetOptions = ['50-100', '100-200', '200-300'];
-export const bodyOptions = ['显腿长', '显腰', '遮胯', '不露腰', '方便大动作'];
+export const sceneOptions = ['练舞房', '拍视频', '舞台', '路演', '夜景', '户外', '日常'];
+export const budgetOptions = ['50-100', '100-200', '200-300', '300-500'];
+export const bodyOptions = ['显腿长', '显腰', '遮胯', '不露腰', '不走光', '方便大动作', '小个子友好'];
+export const avoidOptions = ['无特别避雷', '不要太甜', '不要太露', '不要学院', '不要低腰', '不要紧身', '不要高跟'];
 
 export const visualMap = {
   'pink-mint': 'linear-gradient(135deg, #fecdd3 0%, #fbcfe8 42%, #99f6e4 100%)',

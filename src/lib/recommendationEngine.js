@@ -47,6 +47,19 @@ export function danceToInfo(dance) {
   };
 }
 
+function getAvoidKeywords(avoid) {
+  const avoidMap = {
+    不要太甜: ['甜美', '学院', '蝴蝶结'],
+    不要太露: ['低腰', '露腰', '吊带'],
+    不要学院: ['学院', '百褶裙', '针织开衫'],
+    不要低腰: ['低腰'],
+    不要紧身: ['紧身', '修身'],
+    不要高跟: ['高跟', '高跟感'],
+  };
+
+  return avoidMap[avoid] || [];
+}
+
 export function manualToInfo(form, fallbackDance) {
   const styleTags = unique([form.style]);
   const sceneTags = unique([form.scene]);
@@ -73,7 +86,7 @@ export function manualToInfo(form, fallbackDance) {
       form.freeText ||
       `${form.danceType} 舞蹈搭配 ${form.style} 风格，适合 ${form.scene} 场景，整体要兼顾出片和动作舒展。`,
     priceRange: form.budget,
-    avoidKeywords: [],
+    avoidKeywords: getAvoidKeywords(form.avoid),
     bodyTags,
     freeText: form.freeText,
   };
@@ -202,6 +215,7 @@ export function makeEmptyForm(dance) {
     scene: dance?.sceneTags?.[0] || '练舞房',
     budget: '100-200',
     body: '方便大动作',
+    avoid: '无特别避雷',
     freeText: '',
   };
 }
