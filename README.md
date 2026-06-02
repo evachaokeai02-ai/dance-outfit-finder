@@ -51,7 +51,7 @@ curl "http://localhost:3000/api/pdd-link?goodsId=mock-top-001"
 ```bash
 PDD_CLIENT_ID=your_client_id
 PDD_CLIENT_SECRET=your_client_secret
-PDD_ACCESS_TOKEN=your_access_token
+PDD_PID=your_pid
 ```
 
 如果要把用户搜索、模型生成标签、商品和 Look 持久化到数据库，可选配置 Supabase：
@@ -69,7 +69,7 @@ SUPABASE_OUTFIT_EVENTS_TABLE=outfit_events
 ```bash
 PDD_CLIENT_ID=your_client_id
 PDD_CLIENT_SECRET=your_client_secret
-PDD_ACCESS_TOKEN=your_access_token
+PDD_PID=your_pid
 ```
 
 如果要把用户搜索、模型生成标签、商品和 Look 持久化到数据库，可选配置 Supabase：
@@ -88,7 +88,7 @@ SUPABASE_OUTFIT_EVENTS_TABLE=outfit_events
 
 1. 打开 **Settings**。
 2. 打开 **Environment Variables**。
-3. 新增 `PDD_CLIENT_ID`、`PDD_CLIENT_SECRET`、`PDD_ACCESS_TOKEN`。
+3. 新增 `PDD_CLIENT_ID`、`PDD_CLIENT_SECRET`、`PDD_PID`。
 4. 如需持久化搜索和生成结果，新增 `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`、`SUPABASE_OUTFIT_EVENTS_TABLE`。
 5. 如需把本地 fallback 替换为真实模型，新增 `OPENAI_API_KEY`。
 6. 按需选择 Production / Preview / Development 环境。
@@ -97,5 +97,5 @@ SUPABASE_OUTFIT_EVENTS_TABLE=outfit_events
 ## 安全原则
 
 - 前端只调用 `/api/outfit-profile`、`/api/outfit-events`、`/api/outfit-keywords`、`/api/pdd-search`、`/api/pdd-link` 等自有接口。
-- PDD 签名、access token、推广链接生成等逻辑放在 Serverless Functions 里。
-- API 当前返回 mock 数据，等拿到真实凭证后再替换为 PDD 官方接口调用。
+- PDD 签名、推广位 PID、推广链接生成等逻辑放在 Serverless Functions 里。
+- `/api/pdd-products` 会在服务端环境变量齐全时调用 PDD 官方接口，并在异常时回退到搜索链接，保证前端仍可展示商品入口。
