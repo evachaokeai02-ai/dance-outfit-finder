@@ -118,9 +118,27 @@ function getCouponDiscount(goods) {
   return Number(goods.coupon_discount || goods.coupon_price || 0) || 0;
 }
 
+function normalizePublicUrl(value) {
+  const url = normalizeText(value);
+  if (!url) return '';
+  if (url.startsWith('//')) return `https:${url}`;
+  if (url.startsWith('http://')) return `https://${url.slice('http://'.length)}`;
+  return url;
+}
+
+function getFirstImage(goods) {
+  return normalizePublicUrl(
+    goods.goods_thumbnail_url ||
+      goods.goods_image_url ||
+      goods.hd_thumb_url ||
+      goods.image_url ||
+      (Array.isArray(goods.goods_gallery_urls) ? goods.goods_gallery_urls[0] : '')
+  );
+}
+
 function getPromotionUrl(data) {
   const item = data?.goods_promotion_url_generate_response?.goods_promotion_url_list?.[0] || {};
-  return item.mobile_short_url || item.short_url || item.mobile_url || item.url || item.we_app_web_view_url || '';
+  return normalizePublicUrl(item.mobile_short_url || item.short_url || item.mobile_url || item.url || item.we_app_web_view_url);
 }
 
 function toPublicProduct(goods, promotionLink = '') {
@@ -132,7 +150,7 @@ function toPublicProduct(goods, promotionLink = '') {
     goodsId: String(goods.goods_id || ''),
     goodsSign: goods.goods_sign || '',
     goodsName: goods.goods_name || '',
-    goodsImage: goods.goods_thumbnail_url || goods.goods_image_url || '',
+    goodsImage: getFirstImage(goods),
     price: centsToYuan(minPrice),
     couponPrice: centsToYuan(couponPrice || minPrice),
     mallName: goods.mall_name || '',
@@ -226,7 +244,7 @@ export function toRecommendationProduct(product, query, index = 0) {
     bodyTags: query.bodyTags || [],
     priceRange: priceInCents && priceInCents <= 10000 ? '100以内' : priceInCents && priceInCents <= 30000 ? '100-300' : '300-500',
     image: query.image || 'rose-black',
-    link: product.promotionLink,
+    link: normalizePublicUrl(product.promotionLink),
     source: 'pdd',
     pdd: {
       goodsId: product.goodsId,
