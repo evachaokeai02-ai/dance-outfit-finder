@@ -58,7 +58,10 @@ async function searchOne(query) {
     });
     const products = result.products
       .slice(0, query.limit || 2)
-      .map((product, index) => toRecommendationProduct(product, query, index));
+      .map((product, index) => ({
+        ...toRecommendationProduct(product, query, index),
+        link: product.promotionLink || fallbackSearchUrl(query.keyword),
+      }));
 
     return { ...query, products };
   } catch (error) {

@@ -559,7 +559,6 @@ function ResultsPage({ info, looks, pddState, onCopy, onRestart }) {
       </div>
 
       <ResearchStatus info={info} />
-      <PddStatus state={pddState} />
 
       <div className="mt-6 grid gap-5">
         {looks.map((look) => (
@@ -638,7 +637,7 @@ function LookCard({ look, info, onCopy }) {
       </button>
 
       <p className="mt-3 text-xs leading-5 text-stone-400">
-        文案会包含《{info.danceName}》、单品名称、推荐理由和拍摄建议；如果环境变量已配置，会优先展示拼多多实时商品链接。
+        文案会包含《{info.danceName}》、单品名称、推荐理由和拍摄建议；商品链接会优先使用当前可购买的同款或平替。
       </p>
     </article>
   );
@@ -669,23 +668,6 @@ function ResearchStatus({ info }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function PddStatus({ state }) {
-  if (state.status === 'idle' || state.status === 'ready') return null;
-
-  const textMap = {
-    loading: '正在按这支舞的打歌服关键词连接拼多多商品库，先用本地候选保证页面可用。',
-    disabled: '拼多多 API 已接入：部署后配置 PDD_CLIENT_ID / PDD_CLIENT_SECRET / PDD_PID 即可切换实时商品。',
-    empty: '拼多多 API 暂无匹配商品，当前展示本地候选。',
-    error: '拼多多 API 本次请求失败，当前展示本地候选。',
-  };
-
-  return (
-    <div className="mt-5 rounded-3xl border border-amber-100 bg-amber-50/80 p-4 text-sm font-semibold leading-6 text-amber-800">
-      {textMap[state.status] || textMap.error}
     </div>
   );
 }
