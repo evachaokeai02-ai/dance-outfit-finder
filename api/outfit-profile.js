@@ -13,6 +13,127 @@ const STYLE_RULES = [
   { keys: ['甜酷', '可爱'], tags: ['甜酷', '元气'], keywords: ['短裙套装', '彩色发夹', '短款上衣'] },
 ];
 
+
+const OPENAI_RESPONSES_ENDPOINT = 'https://api.openai.com/v1/responses';
+const OPENAI_SEARCH_DOMAINS = [
+  'xiaohongshu.com',
+  'douyin.com',
+  'bilibili.com',
+  'weibo.com',
+  'youtube.com',
+];
+
+function safeJsonParse(text) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    const match = String(text).match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function toArray(value) {
+  return Array.isArray(value) ? value.map(normalizeText).filter(Boolean) : [];
+}
+
+function normalizeProfile(profile, rawQuery) {
+  return {
+    source: 'model-profile',
+    profileSource: profile.profileSource || 'openai-web-search',
+    rawQuery,
+    danceName: normalizeText(profile.danceName) || rawQuery,
+    artist: normalizeText(profile.artist) || '平台搜索归纳',
+    danceType: normalizeText(profile.danceType) || 'K-pop',
+    styleTags: unique(toArray(profile.styleTags)).slice(0, 6),
+    sceneTags: unique(toArray(profile.sceneTags)).slice(0, 5),
+    outfitKeywords: unique(toArray(profile.outfitKeywords)).slice(0, 14),
+    avoidKeywords: unique(toArray(profile.avoidKeywords)).slice(0, 8),
+    stageOutfitSummary:
+      normalizeText(profile.stageOutfitSummary) ||
+      `已根据「${rawQuery}」的平台打歌服 / 舞台服信息生成穿搭标签。`,
+    stageOutfitProfiles: Array.isArray(profile.stageOutfitProfiles)
+      ? profile.stageOutfitProfiles
+          .map((item) => ({
+            name: normalizeText(item.name),
+            summary: normalizeText(item.summary),
+            styleTags: unique(toArray(item.styleTags)).slice(0, 4),
+            outfitKeywords: unique(toArray(item.outfitKeywords)).slice(0, 6),
+          }))
+          .filter((item) => item.name || item.summary)
+      : [],
+    priceRange: normalizeText(profile.priceRange),
+    bodyTags: unique(toArray(profile.bodyTags)).slice(0, 5),
+    freeText: normalizeText(profile.freeText),
+    stageResearchSources: Array.isArray(profile.stageResearchSources)
+      ? profile.stageResearchSources
+          .map((source) => ({
+            platform: normalizeText(source.platform),
+            title: normalizeText(source.title),
+            url: normalizeText(source.url),
+          }))
+          .filter((source) => source.title || source.url)
+          .slice(0, 8)
+      : [],
+  };
+}
+
+function extractResponseText(data) {
+  if (data.output_text) return data.output_text;
+  return (data.output || [])
+    .flatMap((item) => item.content || [])
+    .map((content) => content.text || '')
+    .join('\n')
+    .trim();
+}
+
+async function buildOpenAiProfile(query) {
+  if (!process.env.OPENAI_API_KEY) return null;
+
+  const response = await fetch(OPENAI_RESPONSES_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_MODEL || 'gpt-5-mini',
+      reasoning: { effort: 'low' },
+      tools: [
+        {
+          type: 'web_search',
+          filters: { allowed_domains: OPENAI_SEARCH_DOMAINS },
+        },
+      ],
+      tool_choice: 'auto',
+      include: ['web_search_call.action.sources'],
+      input: `你是女团/K-pop舞蹈穿搭研究助手。请根据用户输入的歌曲或舞蹈名「${query}」，优先搜索小红书、抖音、B站、微博、YouTube 等平台的舞台/打歌服/MV/cover服装信息，提炼普通人可购买可跳舞的搭配标签。只输出严格 JSON，不要 Markdown。JSON 字段：danceName, artist, danceType, styleTags, sceneTags, outfitKeywords, avoidKeywords, stageOutfitSummary, stageOutfitProfiles, bodyTags, freeText, stageResearchSources。stageOutfitProfiles 至少给 2 个参考层级，每个包含 name, summary, styleTags, outfitKeywords。stageResearchSources 包含 platform, title, url。要求关键词具体到颜色、版型、材质、单品，例如 黑银、皮革短外套、工装短裙、厚底短靴、金属腰链。`,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`openai-${response.status}`);
+  }
+
+  const data = await response.json();
+  const parsed = safeJsonParse(extractResponseText(data));
+  if (!parsed) throw new Error('openai-json-parse-failed');
+
+  return {
+    profile: normalizeProfile(parsed, query),
+    confidence: 0.88,
+    needsReview: false,
+    matchType: 'openai-web-search',
+    matchedDanceId: '',
+    openAiResponseId: data.id,
+  };
+}
+
 function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -104,8 +225,16 @@ function inferByRules(query) {
   };
 }
 
-function buildProfile(query) {
+async function buildProfile(query) {
   const normalized = normalizeText(query);
+
+  try {
+    const openAiResult = await buildOpenAiProfile(normalized);
+    if (openAiResult) return openAiResult;
+  } catch (error) {
+    // Keep the product usable when live model search is unavailable.
+  }
+
   const dance = findDance(normalized);
 
   if (dance) {
@@ -130,7 +259,7 @@ function buildProfile(query) {
   };
 }
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   setCorsHeaders(res);
 
   if (req.method === 'OPTIONS') {
@@ -151,13 +280,13 @@ export default function handler(req, res) {
     return;
   }
 
-  const result = buildProfile(query);
+  const result = await buildProfile(query);
   res.status(200).json({
     ...result,
-    isMock: true,
+    isMock: result.matchType !== 'openai-web-search',
     modelProvider: process.env.OPENAI_API_KEY ? 'openai-ready' : 'local-rule-fallback',
     message: process.env.OPENAI_API_KEY
-      ? 'Model env detected; this endpoint currently returns the structured fallback profile and is ready for model replacement.'
+      ? 'OpenAI env detected; this endpoint attempts live platform web search before falling back to local structured tags.'
       : 'Missing model env, returning local structured profile fallback.',
   });
 }

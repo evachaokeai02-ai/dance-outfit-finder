@@ -6,12 +6,22 @@ const categorySearchTerms = {
 };
 
 function pickLeadKeyword(info) {
+  const stageProfileTerms = (info.stageOutfitProfiles || []).flatMap((profile) => [
+    profile.name,
+    ...(profile.styleTags || []),
+    ...(profile.outfitKeywords || []),
+  ]);
+  const sourcePlatforms = (info.stageResearchSources || []).map((source) => source.platform).filter(Boolean);
+
   return [
+    info.rawQuery,
     info.danceName,
     info.artist,
-    ...(info.outfitKeywords || []).slice(0, 5),
+    ...(info.outfitKeywords || []).slice(0, 7),
+    ...stageProfileTerms.slice(0, 6),
     ...(info.styleTags || []).slice(0, 3),
-    '打歌服 同款 平替',
+    ...sourcePlatforms.slice(0, 2),
+    '打歌服 同款 平替 cover',
   ]
     .filter(Boolean)
     .join(' ');
