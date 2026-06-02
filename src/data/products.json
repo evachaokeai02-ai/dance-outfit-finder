@@ -22,8 +22,7 @@
       "显腿长"
     ],
     "priceRange": "100-300",
-    "image": "pink-mint",
-    "link": "https://example.com/top-01"
+    "image": "pink-mint"
   },
   {
     "id": "top-02",
@@ -47,8 +46,7 @@
       "显腰"
     ],
     "priceRange": "100以内",
-    "image": "mint-lemon",
-    "link": "https://example.com/top-02"
+    "image": "mint-lemon"
   },
   {
     "id": "top-03",
@@ -72,8 +70,7 @@
       "显腰"
     ],
     "priceRange": "100-300",
-    "image": "ice-lilac",
-    "link": "https://example.com/top-03"
+    "image": "ice-lilac"
   },
   {
     "id": "top-04",
@@ -99,8 +96,7 @@
       "显腿长"
     ],
     "priceRange": "100-300",
-    "image": "rose-black",
-    "link": "https://example.com/top-04"
+    "image": "rose-black"
   },
   {
     "id": "top-05",
@@ -125,8 +121,7 @@
       "遮胯"
     ],
     "priceRange": "100-300",
-    "image": "cream-blue",
-    "link": "https://example.com/top-05"
+    "image": "cream-blue"
   },
   {
     "id": "top-06",
@@ -152,8 +147,7 @@
       "遮胯"
     ],
     "priceRange": "300-500",
-    "image": "black-silver",
-    "link": "https://example.com/top-06"
+    "image": "black-silver"
   },
   {
     "id": "top-07",
@@ -179,8 +173,7 @@
       "方便大动作"
     ],
     "priceRange": "100-300",
-    "image": "blue-yellow",
-    "link": "https://example.com/top-07"
+    "image": "blue-yellow"
   },
   {
     "id": "top-08",
@@ -204,8 +197,7 @@
       "方便大动作"
     ],
     "priceRange": "500+",
-    "image": "silver-cyan",
-    "link": "https://example.com/top-08"
+    "image": "silver-cyan"
   },
   {
     "id": "bottom-01",
@@ -230,8 +222,7 @@
       "遮胯"
     ],
     "priceRange": "100-300",
-    "image": "cream-blue",
-    "link": "https://example.com/bottom-01"
+    "image": "cream-blue"
   },
   {
     "id": "bottom-02",
@@ -256,8 +247,7 @@
       "方便大动作"
     ],
     "priceRange": "100-300",
-    "image": "mint-lemon",
-    "link": "https://example.com/bottom-02"
+    "image": "mint-lemon"
   },
   {
     "id": "bottom-03",
@@ -282,8 +272,7 @@
       "遮胯"
     ],
     "priceRange": "100-300",
-    "image": "rose-black",
-    "link": "https://example.com/bottom-03"
+    "image": "rose-black"
   },
   {
     "id": "bottom-04",
@@ -309,8 +298,7 @@
       "方便大动作"
     ],
     "priceRange": "300-500",
-    "image": "blue-yellow",
-    "link": "https://example.com/bottom-04"
+    "image": "blue-yellow"
   },
   {
     "id": "bottom-05",
@@ -336,8 +324,7 @@
       "方便大动作"
     ],
     "priceRange": "100-300",
-    "image": "black-silver",
-    "link": "https://example.com/bottom-05"
+    "image": "black-silver"
   },
   {
     "id": "bottom-06",
@@ -363,8 +350,7 @@
       "方便大动作"
     ],
     "priceRange": "100以内",
-    "image": "pink-mint",
-    "link": "https://example.com/bottom-06"
+    "image": "pink-mint"
   },
   {
     "id": "bottom-07",
@@ -389,8 +375,7 @@
       "显腰"
     ],
     "priceRange": "300-500",
-    "image": "ice-lilac",
-    "link": "https://example.com/bottom-07"
+    "image": "ice-lilac"
   },
   {
     "id": "bottom-08",
@@ -416,8 +401,7 @@
       "遮胯"
     ],
     "priceRange": "500+",
-    "image": "black-silver",
-    "link": "https://example.com/bottom-08"
+    "image": "black-silver"
   },
   {
     "id": "shoes-01",
@@ -442,8 +426,7 @@
       "方便大动作"
     ],
     "priceRange": "100-300",
-    "image": "cream-blue",
-    "link": "https://example.com/shoes-01"
+    "image": "cream-blue"
   },
   {
     "id": "shoes-02",
@@ -466,8 +449,7 @@
       "方便大动作"
     ],
     "priceRange": "300-500",
-    "image": "mint-lemon",
-    "link": "https://example.com/shoes-02"
+    "image": "mint-lemon"
   },
   {
     "id": "shoes-03",
@@ -492,8 +474,7 @@
       "显腿长"
     ],
     "priceRange": "300-500",
-    "image": "rose-black",
-    "link": "https://example.com/shoes-03"
+    "image": "rose-black"
   },
   {
     "id": "shoes-04",
@@ -517,8 +498,7 @@
       "方便大动作"
     ],
     "priceRange": "100-300",
-    "image": "blue-yellow",
-    "link": "https://example.com/shoes-04"
+    "image": "blue-yellow"
   },
   {
     "id": "shoes-05",
@@ -543,8 +523,7 @@
       "方便大动作"
     ],
     "priceRange": "500+",
-    "image": "silver-cyan",
-    "link": "https://example.com/shoes-05"
+    "image": "silver-cyan"
   },
   {
     "id": "shoes-06",
@@ -566,8 +545,7 @@
       "方便大动作"
     ],
     "priceRange": "100以内",
-    "image": "ice-lilac",
-    "link": "https://example.com/shoes-06"
+    "image": "ice-lilac"
   },
   {
     "id": "shoes-07",
@@ -590,8 +568,7 @@
       "显腿长"
     ],
     "priceRange": "100-300",
-    "image": "pink-mint",
-    "link": "https://example.com/shoes-07"
+    "image": "pink-mint"
   },
   {
     "id": "shoes-08",
@@ -618,8 +595,7 @@
       "方便大动作"
     ],
     "priceRange": "300-500",
-    "image": "black-silver",
-    "link": "https://example.com/shoes-08"
+    "image": "black-silver"
   },
   {
     "id": "accessory-01",
@@ -643,8 +619,7 @@
       "显腿长"
     ],
     "priceRange": "100以内",
-    "image": "pink-mint",
-    "link": "https://example.com/accessory-01"
+    "image": "pink-mint"
   },
   {
     "id": "accessory-02",
@@ -668,8 +643,7 @@
       "方便大动作"
     ],
     "priceRange": "100以内",
-    "image": "mint-lemon",
-    "link": "https://example.com/accessory-02"
+    "image": "mint-lemon"
   },
   {
     "id": "accessory-03",
@@ -692,8 +666,7 @@
       "显腰"
     ],
     "priceRange": "100-300",
-    "image": "silver-cyan",
-    "link": "https://example.com/accessory-03"
+    "image": "silver-cyan"
   },
   {
     "id": "accessory-04",
@@ -718,8 +691,7 @@
       "显腰"
     ],
     "priceRange": "100以内",
-    "image": "rose-black",
-    "link": "https://example.com/accessory-04"
+    "image": "rose-black"
   },
   {
     "id": "accessory-05",
@@ -745,8 +717,7 @@
       "显腿长"
     ],
     "priceRange": "100-300",
-    "image": "black-silver",
-    "link": "https://example.com/accessory-05"
+    "image": "black-silver"
   },
   {
     "id": "accessory-06",
@@ -769,8 +740,7 @@
       "方便大动作"
     ],
     "priceRange": "100以内",
-    "image": "blue-yellow",
-    "link": "https://example.com/accessory-06"
+    "image": "blue-yellow"
   },
   {
     "id": "accessory-07",
@@ -794,8 +764,7 @@
       "显腰"
     ],
     "priceRange": "100以内",
-    "image": "ice-lilac",
-    "link": "https://example.com/accessory-07"
+    "image": "ice-lilac"
   },
   {
     "id": "accessory-08",
@@ -818,8 +787,7 @@
       "不露腰"
     ],
     "priceRange": "100-300",
-    "image": "cream-blue",
-    "link": "https://example.com/accessory-08"
+    "image": "cream-blue"
   },
   {
     "id": "top-09",
@@ -845,8 +813,7 @@
       "显腿长"
     ],
     "priceRange": "100-300",
-    "image": "drama-red",
-    "link": "https://example.com/top-09"
+    "image": "drama-red"
   },
   {
     "id": "bottom-09",
@@ -872,8 +839,7 @@
       "显腰"
     ],
     "priceRange": "100-300",
-    "image": "drama-red",
-    "link": "https://example.com/bottom-09"
+    "image": "drama-red"
   },
   {
     "id": "accessory-09",
@@ -898,7 +864,6 @@
       "显腰"
     ],
     "priceRange": "100以内",
-    "image": "drama-red",
-    "link": "https://example.com/accessory-09"
+    "image": "drama-red"
   }
 ]

@@ -25,13 +25,13 @@ export default async function handler(req, res) {
 
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
-    res.status(405).json({ error: 'method-not-allowed', message: 'Use GET /api/pdd/promote?goodsId=xxx' });
+    res.status(405).json({ error: 'method-not-allowed', message: 'Use GET /api/pdd/generate-url?goodsId=xxx or /api/pdd/promote?goodsId=xxx' });
     return;
   }
 
   try {
     const result = await generatePromotionLink({ goodsId: req.query.goodsId, goodsSign: req.query.goodsSign });
-    res.status(200).json(result);
+    res.status(200).json({ ...result, link: result.promotionUrl });
   } catch (error) {
     sendError(res, error);
   }

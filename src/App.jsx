@@ -669,6 +669,7 @@ function ProductRow({ label, product }) {
         <p className="text-xs font-bold text-stone-400">{label}</p>
         <p className="truncate text-sm font-black text-ink">{product.name}</p>
         {product.pdd?.salesTip && <p className="mt-0.5 text-xs font-semibold text-emerald-600">拼多多 {product.pdd.salesTip}</p>}
+        {!product.link && product.linkMessage && <p className="mt-0.5 text-xs font-semibold text-amber-600">{product.linkMessage}</p>}
       </div>
       <span className="shrink-0 rounded-full bg-lemon/70 px-2.5 py-1 text-xs font-bold text-stone-700">
         {product.priceRange}
@@ -685,10 +686,12 @@ function ProductVisual({ product, small = false }) {
       {categoryName(product.category)}
     </span>
   );
-  const className = `grid shrink-0 place-items-center overflow-hidden rounded-2xl product-visual ${small ? 'h-12 w-12' : 'h-20 w-20'} ${product.link ? 'transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-rose focus:ring-offset-2' : ''}`;
+  const isClickable = Boolean(product.link);
+  const disabledTitle = product.linkMessage || '链接生成失败/暂不可跳转';
+  const className = `grid shrink-0 place-items-center overflow-hidden rounded-2xl product-visual ${small ? 'h-12 w-12' : 'h-20 w-20'} ${isClickable ? 'transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-rose focus:ring-offset-2' : 'cursor-not-allowed opacity-70'}`;
   const style = { '--product-bg': visualMap[product.image] || visualMap['pink-mint'] };
 
-  if (product.link) {
+  if (isClickable) {
     return (
       <a
         className={className}
@@ -705,7 +708,12 @@ function ProductVisual({ product, small = false }) {
   }
 
   return (
-    <div className={className} style={style} aria-label={product.name}>
+    <div
+      className={className}
+      style={style}
+      aria-label={`${product.name}：${disabledTitle}`}
+      title={disabledTitle}
+    >
       {visualContent}
     </div>
   );
