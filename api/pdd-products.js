@@ -14,10 +14,6 @@ function parseBody(body) {
   return body;
 }
 
-function fallbackSearchUrl(keyword) {
-  return `https://mobile.yangkeduo.com/search_result.html?search_key=${encodeURIComponent(keyword)}`;
-}
-
 function toFallbackProduct(query, index) {
   const categoryName = {
     top: '短款上衣',
@@ -36,8 +32,10 @@ function toFallbackProduct(query, index) {
     bodyTags: query.bodyTags || [],
     priceRange: '100-300',
     image: query.image || 'rose-black',
-    link: fallbackSearchUrl(query.keyword),
-    source: 'pdd-fallback',
+    link: '',
+    source: 'pdd-unavailable',
+    linkStatus: 'failed',
+    linkMessage: '链接生成失败/暂不可跳转',
     pdd: {
       goodsId: '',
       goodsSign: '',
@@ -58,10 +56,7 @@ async function searchOne(query) {
     });
     const products = result.products
       .slice(0, query.limit || 2)
-      .map((product, index) => ({
-        ...toRecommendationProduct(product, query, index),
-        link: product.promotionLink || fallbackSearchUrl(query.keyword),
-      }));
+      .map((product, index) => toRecommendationProduct(product, query, index));
 
     return { ...query, products };
   } catch (error) {
@@ -110,7 +105,7 @@ export default async function handler(request, response) {
       products,
       results,
       error: failed.length ? 'some-pdd-queries-failed' : '',
-      message: failed.length ? 'Some PDD searches failed; fallback search links were returned for those categories.' : '',
+      message: failed.length ? 'Some PDD searches failed; affected product cards are not clickable until promotion links can be generated.' : '',
     });
   } catch (error) {
     response.status(500).json({ enabled: false, products: [], error: 'pdd-products-error', message: error.message });

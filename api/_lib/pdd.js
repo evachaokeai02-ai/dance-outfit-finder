@@ -136,12 +136,45 @@ function getFirstImage(goods) {
   );
 }
 
-function getPromotionUrl(data) {
-  const item = data?.goods_promotion_url_generate_response?.goods_promotion_url_list?.[0] || {};
-  return normalizePublicUrl(item.mobile_short_url || item.short_url || item.mobile_url || item.url || item.we_app_web_view_url);
+function getPromotionItem(data) {
+  return data?.goods_promotion_url_generate_response?.goods_promotion_url_list?.[0] || {};
 }
 
-function toPublicProduct(goods, promotionLink = '') {
+function normalizeWeAppInfo(item) {
+  const info = item.we_app_info || item.weAppInfo || null;
+  if (!info || typeof info !== 'object') return null;
+
+  return {
+    appId: info.app_id || info.appId || '',
+    pagePath: info.page_path || info.pagePath || '',
+    userName: info.user_name || info.userName || '',
+    weAppIconUrl: normalizePublicUrl(info.we_app_icon_url || info.weAppIconUrl || ''),
+    bannerUrl: normalizePublicUrl(info.banner_url || info.bannerUrl || ''),
+    desc: info.desc || '',
+    sourceDisplayName: info.source_display_name || info.sourceDisplayName || '',
+  };
+}
+
+function toPromotionUrls(data) {
+  const item = getPromotionItem(data);
+  const mobileShortUrl = normalizePublicUrl(item.mobile_short_url);
+  const shortUrl = normalizePublicUrl(item.short_url);
+  const mobileUrl = normalizePublicUrl(item.mobile_url);
+  const url = normalizePublicUrl(item.url);
+  const weAppWebViewUrl = normalizePublicUrl(item.we_app_web_view_url);
+  const promotionUrl = mobileShortUrl || shortUrl || mobileUrl || url || weAppWebViewUrl;
+
+  return {
+    promotionUrl,
+    mobileUrl,
+    shortUrl: mobileShortUrl || shortUrl,
+    url,
+    weAppWebViewUrl,
+    weAppInfo: normalizeWeAppInfo(item),
+  };
+}
+
+function toPublicProduct(goods, promotion = {}) {
   const minPrice = Number(goods.min_group_price || goods.min_normal_price || 0);
   const couponDiscount = getCouponDiscount(goods);
   const couponPrice = minPrice > 0 ? Math.max(minPrice - couponDiscount, 0) : 0;
@@ -154,7 +187,14 @@ function toPublicProduct(goods, promotionLink = '') {
     price: centsToYuan(minPrice),
     couponPrice: centsToYuan(couponPrice || minPrice),
     mallName: goods.mall_name || '',
-    promotionLink,
+    promotionLink: promotion.promotionUrl || '',
+    promotionUrl: promotion.promotionUrl || '',
+    mobileUrl: promotion.mobileUrl || '',
+    shortUrl: promotion.shortUrl || '',
+    url: promotion.url || '',
+    weAppWebViewUrl: promotion.weAppWebViewUrl || '',
+    weAppInfo: promotion.weAppInfo || null,
+    promotionError: promotion.error || '',
   };
 }
 
@@ -183,9 +223,9 @@ export async function generatePromotionLink({ goodsId, goodsSign }) {
   }
 
   const data = await callPddApi('pdd.ddk.goods.promotion.url.generate', params);
-  const promotionLink = getPromotionUrl(data);
+  const promotion = toPromotionUrls(data);
 
-  if (!promotionLink) {
+  if (!promotion.promotionUrl) {
     throw new PddApiError('PDD promotion API did not return a promotion link', {
       statusCode: 502,
       code: 'missing-promotion-link',
@@ -193,7 +233,17 @@ export async function generatePromotionLink({ goodsId, goodsSign }) {
     });
   }
 
-  return { goodsId: normalizedGoodsId, goodsSign: normalizedGoodsSign, promotionLink };
+  return {
+    goodsId: normalizedGoodsId,
+    goodsSign: normalizedGoodsSign,
+    promotionLink: promotion.promotionUrl,
+    promotionUrl: promotion.promotionUrl,
+    mobileUrl: promotion.mobileUrl,
+    shortUrl: promotion.shortUrl,
+    url: promotion.url,
+    weAppWebViewUrl: promotion.weAppWebViewUrl,
+    weAppInfo: promotion.weAppInfo,
+  };
 }
 
 export async function searchGoods({ keyword, page = DEFAULT_PAGE, pageSize = DEFAULT_PAGE_SIZE, sortType = 0, withCoupon = false }) {
@@ -216,9 +266,11 @@ export async function searchGoods({ keyword, page = DEFAULT_PAGE, pageSize = DEF
     goodsList.map(async (goods) => {
       try {
         const promotion = await generatePromotionLink({ goodsId: goods.goods_id, goodsSign: goods.goods_sign });
-        return toPublicProduct(goods, promotion.promotionLink);
-      } catch {
-        return toPublicProduct(goods, goods.goods_url || goods.mall_coupon_url || '');
+        return toPublicProduct(goods, promotion);
+      } catch (error) {
+        return toPublicProduct(goods, {
+          error: error instanceof PddApiError ? error.code : error.message,
+        });
       }
     })
   );
@@ -246,6 +298,8 @@ export function toRecommendationProduct(product, query, index = 0) {
     image: query.image || 'rose-black',
     link: normalizePublicUrl(product.promotionLink),
     source: 'pdd',
+    linkStatus: product.promotionLink ? 'ready' : 'failed',
+    linkMessage: product.promotionLink ? '' : '链接生成失败/暂不可跳转',
     pdd: {
       goodsId: product.goodsId,
       goodsSign: product.goodsSign,
@@ -253,6 +307,13 @@ export function toRecommendationProduct(product, query, index = 0) {
       couponPrice: Math.round(Number(product.couponPrice || 0) * 100),
       thumbUrl: product.goodsImage,
       mallName: product.mallName,
+      promotionUrl: normalizePublicUrl(product.promotionUrl || product.promotionLink),
+      mobileUrl: normalizePublicUrl(product.mobileUrl),
+      shortUrl: normalizePublicUrl(product.shortUrl),
+      url: normalizePublicUrl(product.url),
+      weAppWebViewUrl: normalizePublicUrl(product.weAppWebViewUrl),
+      weAppInfo: product.weAppInfo || null,
+      promotionError: product.promotionError || '',
     },
   };
 }

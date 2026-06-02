@@ -28,8 +28,8 @@ npm run build
 | `/api/outfit-profile` | `GET` / `POST` | 输入用户搜索，输出可直接喂给推荐引擎的结构化 `finalInfo` | 本地规则 fallback，可替换模型 |
 | `/api/outfit-events` | `POST` | 记录 query、generated profile、products、selected looks 到数据库 | Supabase 可选配置 |
 | `/api/outfit-keywords` | `GET` / `POST` | 根据 `danceName`、`style`、`color`、`scene`、`body`、`budget` 生成商品搜索关键词 | 本地规则生成 |
-| `/api/pdd-search` | `GET` / `POST` | 根据 `keyword` 搜索商品 | 暂时返回 mock 商品 |
-| `/api/pdd-link` | `GET` / `POST` | 根据 `goodsId` 生成推广 / 跳转链接 | 暂时返回 mock link |
+| `/api/pdd-search` | `GET` / `POST` | 根据 `keyword` 搜索商品并尝试生成多多进宝推广链接 | 返回真实 PDD 商品；推广链接失败时字段为空并返回错误信息 |
+| `/api/pdd-link` | `GET` / `POST` | 根据 `goodsId` / `goodsSign` 生成推广 / 跳转链接 | 返回真实多多进宝推广链接；环境变量缺失会返回明确错误 |
 
 ### 示例请求
 
@@ -37,7 +37,7 @@ npm run build
 curl "http://localhost:3000/api/outfit-profile?query=Super%20Shy"
 curl "http://localhost:3000/api/outfit-keywords?danceName=Super%20Shy&style=甜酷&color=粉色&scene=舞台"
 curl "http://localhost:3000/api/pdd-search?keyword=甜酷短上衣"
-curl "http://localhost:3000/api/pdd-link?goodsId=mock-top-001"
+curl "http://localhost:3000/api/pdd-link?goodsId=123456789"
 ```
 
 > 注意：`npm run dev` 只启动 Vite 前端开发服务器。要在本地同时调试 Vercel Functions，建议使用 Vercel CLI：`vercel dev`。
@@ -96,6 +96,6 @@ SUPABASE_OUTFIT_EVENTS_TABLE=outfit_events
 
 ## 安全原则
 
-- 前端只调用 `/api/outfit-profile`、`/api/outfit-events`、`/api/outfit-keywords`、`/api/pdd-search`、`/api/pdd-link` 等自有接口。
+- 前端只调用 `/api/outfit-profile`、`/api/outfit-events`、`/api/outfit-keywords`、`/api/pdd-products`、`/api/pdd-search`、`/api/pdd-link`、`/api/pdd/generate-url` 等自有接口。
 - PDD 签名、推广位 PID、推广链接生成等逻辑放在 Serverless Functions 里。
-- `/api/pdd-products` 会在服务端环境变量齐全时调用 PDD 官方接口，并在异常时回退到搜索链接，保证前端仍可展示商品入口。
+- `/api/pdd-products` 会在服务端环境变量齐全时调用 PDD 官方搜索接口，并在返回给前端前批量调用推广链接生成接口；推广链接生成失败时不会回退到任意占位或搜索 URL，商品卡片保持不可跳转并显示“链接生成失败/暂不可跳转”。
