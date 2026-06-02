@@ -15,6 +15,12 @@ function intersects(left = [], right = []) {
   return left.filter((item) => right.includes(item));
 }
 
+function stableHash(value) {
+  return String(value || '').split('').reduce((hash, char) => {
+    return (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }, 2166136261);
+}
+
 export function findDance(query, danceStyles) {
   const normalized = normalizeText(query);
   if (!normalized) return null;
@@ -126,6 +132,21 @@ function getCompatibleExtraStyles(baseStyles = [], extraStyles = [], avoidKeywor
   });
 }
 
+function getSignatureTerms(info) {
+  return unique([
+    info.rawQuery,
+    info.danceName,
+    info.artist,
+    ...(info.outfitKeywords || []),
+    ...(info.stageOutfitProfiles || []).flatMap((profile) => [
+      profile.name,
+      profile.summary,
+      ...(profile.styleTags || []),
+      ...(profile.outfitKeywords || []),
+    ]),
+  ]).filter((term) => String(term).length >= 2);
+}
+
 function scoreProduct(product, info) {
   const productTerms = getProductTerms(product);
   const keywordScore = (info.outfitKeywords || []).reduce((sum, keyword) => {
@@ -135,6 +156,9 @@ function scoreProduct(product, info) {
     return productTerms.includes(keyword) ? sum + 6 : sum;
   }, 0);
   const conflictPenalty = intersects(product.styleTags, getConflictTags(info.styleTags)).length * 4;
+  const signatureScore = getSignatureTerms(info).reduce((sum, term) => {
+    return productTerms.includes(term) ? sum + 3 : sum;
+  }, 0);
 
   return (
     intersects(product.styleTags, info.styleTags).length * 3 +
@@ -142,29 +166,33 @@ function scoreProduct(product, info) {
     ((product.danceTags || []).includes(info.danceType) ? 2 : 0) +
     intersects(product.bodyTags, info.bodyTags).length * 2 +
     (info.priceRange && product.priceRange === info.priceRange ? 4 : 0) +
-    keywordScore -
+    keywordScore +
+    signatureScore -
     avoidPenalty -
     conflictPenalty
   );
 }
 
-function pickProduct(category, info, usedIds, fallbackIndex, products) {
+function pickProduct(category, info, usedIds, fallbackIndex, products, lookKey) {
   const categoryProducts = products.filter((product) => product.category === category);
+  if (!categoryProducts.length) return null;
 
   const budgetOrder = getBudgetOrder(info.priceRange);
   const budgetPriority = new Map(budgetOrder.map((range, index) => [range, index]));
+  const seed = stableHash([info.rawQuery, info.danceName, info.artist, category, lookKey].filter(Boolean).join('|'));
   const ranked = categoryProducts
     .map((product, index) => ({
       product,
       index,
       score: scoreProduct(product, info),
       budgetRank: budgetPriority.get(product.priceRange) ?? 99,
+      seededRank: stableHash(`${product.id}:${seed}`) % 1000,
     }))
-    .sort((a, b) => b.score - a.score || a.budgetRank - b.budgetRank || a.index - b.index);
+    .sort((a, b) => b.score - a.score || a.budgetRank - b.budgetRank || b.seededRank - a.seededRank || a.index - b.index);
 
   return (
     ranked.find((item) => !usedIds.has(item.product.id))?.product ||
-    ranked[fallbackIndex % ranked.length]?.product ||
+    ranked[(fallbackIndex + (seed % ranked.length)) % ranked.length]?.product ||
     categoryProducts[0]
   );
 }
@@ -183,10 +211,10 @@ export function buildLooks(info, products) {
       bodyTags: unique([...(info.bodyTags || []), ...(config.extraBody || [])]),
     };
 
-    const top = pickProduct('top', lookInfo, usedIds, index, products);
-    const bottom = pickProduct('bottom', lookInfo, usedIds, index, products);
-    const shoes = pickProduct('shoes', lookInfo, usedIds, index, products);
-    const accessory = pickProduct('accessory', lookInfo, usedIds, index, products);
+    const top = pickProduct('top', lookInfo, usedIds, index, products, config.key);
+    const bottom = pickProduct('bottom', lookInfo, usedIds, index, products, config.key);
+    const shoes = pickProduct('shoes', lookInfo, usedIds, index, products, config.key);
+    const accessory = pickProduct('accessory', lookInfo, usedIds, index, products, config.key);
 
     [top, bottom, shoes, accessory].forEach((product) => product && usedIds.add(product.id));
 

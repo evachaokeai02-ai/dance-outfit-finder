@@ -558,6 +558,7 @@ function ResultsPage({ info, looks, pddState, onCopy, onRestart }) {
         ))}
       </div>
 
+      <ResearchStatus info={info} />
       <PddStatus state={pddState} />
 
       <div className="mt-6 grid gap-5">
@@ -640,6 +641,35 @@ function LookCard({ look, info, onCopy }) {
         文案会包含《{info.danceName}》、单品名称、推荐理由和拍摄建议；如果环境变量已配置，会优先展示拼多多实时商品链接。
       </p>
     </article>
+  );
+}
+
+function ResearchStatus({ info }) {
+  const isModelSearch = info.profileSource === 'openai-web-search';
+  const sources = info.stageResearchSources || [];
+
+  return (
+    <div className="mt-5 rounded-3xl border border-violet-100 bg-white/85 p-4 text-sm leading-6 text-stone-700 shadow-card">
+      <p className="font-black text-ink">
+        {isModelSearch ? '模型已搜索平台打歌服' : '本地曲库标签生成'}
+      </p>
+      <p className="mt-1 font-semibold">{info.stageOutfitSummary}</p>
+      {sources.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {sources.map((source) => (
+            <a
+              key={`${source.platform}-${source.url || source.title}`}
+              href={source.url || '#'}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full bg-blush px-3 py-1 text-xs font-black text-rose"
+            >
+              {source.platform || '平台'} · {source.title || '参考'}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
