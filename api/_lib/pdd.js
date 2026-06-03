@@ -4,6 +4,7 @@ const PDD_ENDPOINT = 'https://gw-api.pinduoduo.com/api/router';
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 40;
+const DEFAULT_PID_NAME = 'dancecloset-main';
 
 export class PddApiError extends Error {
   constructor(message, { statusCode = 500, code = 'pdd-api-error', details } = {}) {
@@ -97,6 +98,11 @@ export async function callPddApi(type, params = {}) {
       statusCode: 502,
       code: 'pdd-business-error',
       details: {
+        error_code: error.error_code,
+        error_msg: error.error_msg,
+        sub_code: error.sub_code,
+        sub_msg: error.sub_msg,
+        request_id: error.request_id,
         pddErrorCode: error.error_code,
         pddSubCode: error.sub_code,
         pddSubMessage: error.sub_msg,
@@ -106,6 +112,69 @@ export async function callPddApi(type, params = {}) {
   }
 
   return data;
+}
+
+function getPidGenerateResponse(data) {
+  return data?.p_id_generate_response || data?.goods_pid_generate_response || {};
+}
+
+function normalizeGeneratedPid(data) {
+  const response = getPidGenerateResponse(data);
+  const pidList = response.p_id_list || response.pid_list || response.pIdList || [];
+  const firstPid = Array.isArray(pidList) ? pidList[0] || {} : {};
+
+  return {
+    p_id: firstPid.p_id || firstPid.pId || '',
+    pid_name: firstPid.pid_name || firstPid.pidName || firstPid.p_id_name || DEFAULT_PID_NAME,
+    create_time: firstPid.create_time || firstPid.createTime || '',
+    remain_pid_count: response.remain_pid_count ?? response.remainPidCount ?? null,
+  };
+}
+
+function formatPromotionError(error) {
+  if (!(error instanceof PddApiError)) {
+    return {
+      code: 'internal-error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+
+  return {
+    code: error.code,
+    message: error.message,
+    error_code: error.details?.error_code ?? error.details?.pddErrorCode,
+    error_msg: error.details?.error_msg ?? error.message,
+    sub_code: error.details?.sub_code ?? error.details?.pddSubCode,
+    sub_msg: error.details?.sub_msg ?? error.details?.pddSubMessage,
+    request_id: error.details?.request_id ?? error.details?.requestId,
+  };
+}
+
+export function getPddEnvPresence() {
+  return {
+    hasClientId: Boolean(normalizeText(process.env.PDD_CLIENT_ID)),
+    hasClientSecret: Boolean(normalizeText(process.env.PDD_CLIENT_SECRET)),
+    pddPid: normalizeText(process.env.PDD_PID),
+  };
+}
+
+export async function generatePid() {
+  const params = {
+    number: 1,
+    p_id_name_list: JSON.stringify([DEFAULT_PID_NAME]),
+  };
+  const data = await callPddApi('pdd.ddk.goods.pid.generate', params);
+  const pid = normalizeGeneratedPid(data);
+
+  if (!pid.p_id) {
+    throw new PddApiError('PDD PID API did not return a p_id', {
+      statusCode: 502,
+      code: 'missing-pdd-pid',
+      details: { response: getPidGenerateResponse(data) },
+    });
+  }
+
+  return pid;
 }
 
 function centsToYuan(value) {
@@ -269,7 +338,7 @@ export async function searchGoods({ keyword, page = DEFAULT_PAGE, pageSize = DEF
         return toPublicProduct(goods, promotion);
       } catch (error) {
         return toPublicProduct(goods, {
-          error: error instanceof PddApiError ? error.code : error.message,
+          error: formatPromotionError(error),
         });
       }
     })
@@ -299,7 +368,7 @@ export function toRecommendationProduct(product, query, index = 0) {
     link: normalizePublicUrl(product.promotionLink),
     source: 'pdd',
     linkStatus: product.promotionLink ? 'ready' : 'failed',
-    linkMessage: product.promotionLink ? '' : '链接生成失败/暂不可跳转',
+    linkMessage: product.promotionLink ? '' : product.promotionError?.error_msg || product.promotionError?.message || '链接生成失败/暂不可跳转',
     pdd: {
       goodsId: product.goodsId,
       goodsSign: product.goodsSign,
