@@ -23,6 +23,13 @@ function normalizeText(value) {
   return String(value || '').trim();
 }
 
+function sha256Short(value) {
+  const normalizedValue = normalizeText(value);
+  if (!normalizedValue) return null;
+
+  return crypto.createHash('sha256').update(normalizedValue, 'utf8').digest('hex').slice(0, 8);
+}
+
 function requireEnv(name) {
   const value = normalizeText(process.env[name]);
   if (!value) {
@@ -192,6 +199,16 @@ export function getPddEnvPresence() {
   return getPddPidDiagnostics();
 }
 
+export function getPddSafeHashes() {
+  const pid = normalizeText(process.env.PDD_PID);
+  const pidPrefix = pid.split('_')[0] || '';
+
+  return {
+    clientIdHash: sha256Short(process.env.PDD_CLIENT_ID),
+    pidPrefixHash: sha256Short(pidPrefix),
+  };
+}
+
 function getPddCustomParameters() {
   return normalizeText(process.env.PDD_CUSTOM_PARAMETERS) || undefined;
 }
@@ -302,6 +319,29 @@ export async function queryPidByDefaultName() {
     matchedPid,
     pidList: normalizedPidList,
     total_count: Number(response.total_count ?? response.totalCount ?? normalizedPidList.length),
+  };
+}
+
+export async function queryConfiguredPidInventory() {
+  const configuredPid = requirePddPid();
+  const data = await callPddApi('pdd.ddk.goods.pid.query', {
+    page: PID_QUERY_PAGE,
+    page_size: PID_QUERY_PAGE_SIZE,
+    status: PID_QUERY_STATUS,
+  });
+  const response = getPidQueryResponse(data);
+  const rawPidList = Array.isArray(response.p_id_list)
+    ? response.p_id_list
+    : Array.isArray(response.pid_list)
+      ? response.pid_list
+      : [];
+  const normalizedPidList = rawPidList.map(normalizeQueriedPid);
+
+  return {
+    total_count: Number(response.total_count ?? response.totalCount ?? normalizedPidList.length),
+    pidList: normalizedPidList.slice(0, 20),
+    matchedByConfiguredPid: normalizedPidList.some((pid) => pid.p_id === configuredPid),
+    matchedByName: normalizedPidList.some((pid) => pid.pid_name === DEFAULT_PID_NAME),
   };
 }
 
