@@ -5,6 +5,13 @@ const categorySearchTerms = {
   accessory: '腰链 腰带 配饰',
 };
 
+const categoryFallbackQueries = {
+  top: ['女团短上衣', '修身短上衣', '运动背心'],
+  bottom: ['百褶短裙', '黑色短裙', '低腰短裤'],
+  shoes: ['跳舞鞋', '厚底小白鞋', '运动鞋'],
+  accessory: ['腰带', '金属腰链', '发饰'],
+};
+
 function pickLeadKeyword(info) {
   const stageProfileTerms = (info.stageOutfitProfiles || []).flatMap((profile) => [
     profile.name,
@@ -33,6 +40,7 @@ export function buildPddQueries(info) {
   return Object.entries(categorySearchTerms).map(([category, terms]) => ({
     category,
     keyword: `${baseKeyword} ${terms}`,
+    fallbackQueries: categoryFallbackQueries[category] || [],
     styleTags: info.styleTags || [],
     sceneTags: info.sceneTags || [],
     danceTags: [info.danceType].filter(Boolean),
