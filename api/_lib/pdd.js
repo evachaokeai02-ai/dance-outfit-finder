@@ -168,7 +168,89 @@ export function getPddEnvPresence() {
     hasClientId: Boolean(normalizeText(process.env.PDD_CLIENT_ID)),
     hasClientSecret: Boolean(normalizeText(process.env.PDD_CLIENT_SECRET)),
     hasPid: Boolean(normalizeText(process.env.PDD_PID)),
+    hasCustomParameters: Boolean(normalizeText(process.env.PDD_CUSTOM_PARAMETERS)),
   };
+}
+
+function getPddCustomParameters() {
+  return normalizeText(process.env.PDD_CUSTOM_PARAMETERS) || undefined;
+}
+
+function getAuthorityBaseParams() {
+  const customParameters = getPddCustomParameters();
+
+  return compactObject({
+    pid: requireEnv('PDD_PID'),
+    custom_parameters: customParameters,
+  });
+}
+
+function getAuthorityUrlResponse(data) {
+  return (
+    data?.rp_promotion_url_generate_response ||
+    data?.rp_prom_url_generate_response ||
+    data?.promotion_url_generate_response ||
+    data?.url_generate_response ||
+    {}
+  );
+}
+
+function getFirstAuthorityUrlItem(data) {
+  const response = getAuthorityUrlResponse(data);
+  const urlList =
+    response.url_list ||
+    response.resource_url_list ||
+    response.rp_url_list ||
+    response.goods_promotion_url_list ||
+    [];
+
+  if (Array.isArray(urlList) && urlList.length) {
+    return urlList[0] || {};
+  }
+
+  return response;
+}
+
+function normalizeAuthorityWeAppInfo(info) {
+  if (!info || typeof info !== 'object') return null;
+
+  return {
+    ...info,
+    page_path: info.page_path || info.pagePath || '',
+  };
+}
+
+function normalizeAuthorityUrlResponse(data) {
+  const item = getFirstAuthorityUrlItem(data);
+  const weAppInfo = normalizeAuthorityWeAppInfo(item.we_app_info || item.weAppInfo || null);
+
+  return {
+    url: normalizePublicUrl(item.url || item.rp_url || ''),
+    mobile_url: normalizePublicUrl(item.mobile_url || item.mobileUrl || ''),
+    schema_url: normalizePublicUrl(item.schema_url || item.schemaUrl || ''),
+    short_url: normalizePublicUrl(item.short_url || item.shortUrl || ''),
+    we_app_info: weAppInfo,
+    page_path: weAppInfo?.page_path || '',
+    raw_response: data,
+  };
+}
+
+export async function queryMemberAuthority() {
+  const data = await callPddApi('pdd.ddk.member.authority.query', getAuthorityBaseParams());
+
+  return {
+    raw_response: data,
+  };
+}
+
+export async function generateAuthorityUrl() {
+  const data = await callPddApi('pdd.ddk.rp.prom.url.generate', {
+    ...getAuthorityBaseParams(),
+    channel_type: 10,
+    generate_we_app: true,
+  });
+
+  return normalizeAuthorityUrlResponse(data);
 }
 
 
