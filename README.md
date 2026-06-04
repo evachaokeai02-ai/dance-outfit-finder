@@ -54,6 +54,8 @@ curl -X POST "http://localhost:3000/api/pdd-debug" -H "Content-Type: application
 PDD_CLIENT_ID=your_client_id
 PDD_CLIENT_SECRET=your_client_secret
 PDD_PID=your_pid
+# 可选；仅用于安全诊断 pid 前缀是否匹配 duo_id，不会输出完整 PID
+PDD_DUO_ID=your_duo_id
 # 可选；配置后 /api/pdd-debug 必须携带匹配的 x-admin-token
 ADMIN_TOKEN=your_admin_token
 ```
@@ -74,6 +76,8 @@ SUPABASE_OUTFIT_EVENTS_TABLE=outfit_events
 PDD_CLIENT_ID=your_client_id
 PDD_CLIENT_SECRET=your_client_secret
 PDD_PID=your_pid
+# 可选；仅用于安全诊断 pid 前缀是否匹配 duo_id，不会输出完整 PID
+PDD_DUO_ID=your_duo_id
 # 可选；配置后 /api/pdd-debug 必须携带匹配的 x-admin-token
 ADMIN_TOKEN=your_admin_token
 ```

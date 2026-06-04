@@ -35,6 +35,18 @@ function requireEnv(name) {
   return value;
 }
 
+function requirePddPid() {
+  const pid = process.env.PDD_PID?.trim() || '';
+  if (!pid) {
+    throw new PddApiError('Missing required environment variable: PDD_PID', {
+      statusCode: 500,
+      code: 'missing-env',
+      details: { env: 'PDD_PID' },
+    });
+  }
+  return pid;
+}
+
 function compactObject(payload) {
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -163,13 +175,21 @@ function formatPromotionError(error) {
   };
 }
 
-export function getPddEnvPresence() {
+function getPddPidDiagnostics() {
+  const pid = normalizeText(process.env.PDD_PID);
+  const duoId = normalizeText(process.env.PDD_DUO_ID || process.env.PDD_DUO_ID_VALUE);
+  const pidPrefix = pid.split('_')[0] || '';
+
   return {
-    hasClientId: Boolean(normalizeText(process.env.PDD_CLIENT_ID)),
-    hasClientSecret: Boolean(normalizeText(process.env.PDD_CLIENT_SECRET)),
-    hasPid: Boolean(normalizeText(process.env.PDD_PID)),
-    hasCustomParameters: Boolean(normalizeText(process.env.PDD_CUSTOM_PARAMETERS)),
+    hasPid: Boolean(pid),
+    pidPrefixMatchesDuoId: Boolean(pid && duoId && pidPrefix === duoId),
+    pidHasUnderscore: pid.includes('_'),
+    pidLength: pid.length,
   };
+}
+
+export function getPddEnvPresence() {
+  return getPddPidDiagnostics();
 }
 
 function getPddCustomParameters() {
@@ -180,7 +200,7 @@ function getAuthorityBaseParams() {
   const customParameters = getPddCustomParameters();
 
   return compactObject({
-    pid: requireEnv('PDD_PID'),
+    pid: requirePddPid(),
     custom_parameters: customParameters,
   });
 }
@@ -404,7 +424,7 @@ function toPublicProduct(goods, promotion = {}) {
 }
 
 export async function generatePromotionLink({ goodsId, goodsSign }) {
-  const pId = requireEnv('PDD_PID');
+  const pId = requirePddPid();
   const normalizedGoodsId = normalizeText(goodsId);
   const normalizedGoodsSign = normalizeText(goodsSign);
 
@@ -473,18 +493,7 @@ export async function searchGoods({ keyword, page = DEFAULT_PAGE, pageSize = DEF
       } catch (error) {
         const promotionError = formatPromotionError(error);
         console.error('[pdd-promotion] url generate failed', {
-          hasClientId: Boolean(normalizeText(process.env.PDD_CLIENT_ID)),
-          hasClientSecret: Boolean(normalizeText(process.env.PDD_CLIENT_SECRET)),
-          hasPid: Boolean(normalizeText(process.env.PDD_PID)),
-          goods_id: String(goods.goods_id || ''),
-          has_goods_sign: Boolean(normalizeText(goods.goods_sign)),
-          error_code: promotionError.error_code,
-          error_msg: promotionError.error_msg,
-          sub_code: promotionError.sub_code,
-          sub_msg: promotionError.sub_msg,
-          request_id: promotionError.request_id,
-          code: promotionError.code,
-          message: promotionError.message,
+          ...getPddPidDiagnostics(),
         });
         return toPublicProduct(goods, {
           error: promotionError,
@@ -545,5 +554,9 @@ export function toRecommendationProduct(product, query, index = 0) {
 }
 
 export function isPddConfigured() {
-  return Boolean(process.env.PDD_CLIENT_ID && process.env.PDD_CLIENT_SECRET && process.env.PDD_PID);
+  return Boolean(
+    normalizeText(process.env.PDD_CLIENT_ID) &&
+      normalizeText(process.env.PDD_CLIENT_SECRET) &&
+      normalizeText(process.env.PDD_PID)
+  );
 }
