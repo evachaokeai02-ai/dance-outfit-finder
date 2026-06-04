@@ -691,6 +691,12 @@ function getProductAltText(product) {
   return getDisplayTitle(product) || categoryName(product?.category);
 }
 
+function getProductPriceLabel(product) {
+  if (product?.source === 'pdd' && product.priceLabel) return product.priceLabel;
+  if (product?.source === 'pdd' && Number(product.price) > 0) return `¥${Number(product.price).toFixed(2).replace(/\.00$/, '')}`;
+  return product?.priceRange || '';
+}
+
 
 function ensureProductDisplayFields(product) {
   const displayTitle = getDisplayTitle(product);
@@ -724,7 +730,7 @@ function ProductRow({ label, product }) {
         {!product.link && product.linkMessage && <p className="mt-0.5 text-xs font-semibold text-amber-600">{product.linkMessage}</p>}
       </div>
       <span className="shrink-0 rounded-full bg-lemon/70 px-2.5 py-1 text-xs font-bold text-stone-700">
-        {product.priceRange}
+        {getProductPriceLabel(product)}
       </span>
     </div>
   );
