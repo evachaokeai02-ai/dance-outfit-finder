@@ -679,14 +679,16 @@ function ProductRow({ label, product }) {
 }
 
 function ProductVisual({ product, small = false }) {
-  const visualContent = product.pdd?.thumbUrl ? (
-    <img className="h-full w-full object-cover" src={product.pdd.thumbUrl} alt={product.name} loading="lazy" referrerPolicy="no-referrer" />
+  const productImageUrl = product.imageUrl || product.pdd?.imageUrl || product.pdd?.thumbUrl;
+  const visualContent = productImageUrl ? (
+    <img className="h-full w-full object-cover" src={productImageUrl} alt={product.name} loading="lazy" referrerPolicy="no-referrer" />
   ) : (
     <span className={`${small ? 'text-xs' : 'text-sm'} font-black text-white drop-shadow`}>
       {categoryName(product.category)}
     </span>
   );
-  const isClickable = Boolean(product.link);
+  const productJumpUrl = product.jumpUrl || product.link;
+  const isClickable = Boolean(productJumpUrl);
   const disabledTitle = product.linkMessage || '链接生成失败/暂不可跳转';
   const className = `grid shrink-0 place-items-center overflow-hidden rounded-2xl product-visual ${small ? 'h-12 w-12' : 'h-20 w-20'} ${isClickable ? 'transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-rose focus:ring-offset-2' : 'cursor-not-allowed opacity-70'}`;
   const style = { '--product-bg': visualMap[product.image] || visualMap['pink-mint'] };
@@ -696,7 +698,7 @@ function ProductVisual({ product, small = false }) {
       <a
         className={className}
         style={style}
-        href={product.link}
+        href={productJumpUrl}
         target="_blank"
         rel="noreferrer"
         aria-label={`打开${product.name}商品链接`}

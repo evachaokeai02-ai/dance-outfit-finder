@@ -1,5 +1,11 @@
 import { generatePid, getPddEnvPresence, PddApiError } from './_lib/pdd.js';
 
+function maskPid(value) {
+  const text = String(value || '');
+  if (!text) return '';
+  return `${text.slice(0, 4)}...${text.slice(-4)}`;
+}
+
 function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -13,7 +19,7 @@ function sendError(res, error) {
   console.error('[pdd-pid] generate failed', {
     hasClientId: env.hasClientId,
     hasClientSecret: env.hasClientSecret,
-    pddPid: env.pddPid,
+    hasPid: env.hasPid,
     error: error instanceof PddApiError ? error.code : 'internal-error',
     message: error instanceof Error ? error.message : 'Unknown error',
     details: error instanceof PddApiError ? error.details : undefined,
@@ -27,7 +33,7 @@ function sendError(res, error) {
     env: {
       hasClientId: env.hasClientId,
       hasClientSecret: env.hasClientSecret,
-      pddPid: env.pddPid,
+      hasPid: env.hasPid,
     },
   });
 }
@@ -54,8 +60,8 @@ export default async function handler(req, res) {
     console.info('[pdd-pid] generated', {
       hasClientId: env.hasClientId,
       hasClientSecret: env.hasClientSecret,
-      pddPid: env.pddPid,
-      p_id: pid.p_id,
+      hasPid: env.hasPid,
+      p_id_preview: maskPid(pid.p_id),
       pid_name: pid.pid_name,
       create_time: pid.create_time,
       remain_pid_count: pid.remain_pid_count,
@@ -70,7 +76,7 @@ export default async function handler(req, res) {
       env: {
         hasClientId: env.hasClientId,
         hasClientSecret: env.hasClientSecret,
-        pddPid: env.pddPid,
+        hasPid: env.hasPid,
       },
     });
   } catch (error) {
