@@ -5,6 +5,9 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 40;
 const DEFAULT_PID_NAME = 'dancecloset-main';
+const PID_QUERY_PAGE = 1;
+const PID_QUERY_PAGE_SIZE = 100;
+const PID_QUERY_STATUS = 0;
 
 export class PddApiError extends Error {
   constructor(message, { statusCode = 500, code = 'pdd-api-error', details } = {}) {
@@ -155,6 +158,38 @@ export function getPddEnvPresence() {
     hasClientId: Boolean(normalizeText(process.env.PDD_CLIENT_ID)),
     hasClientSecret: Boolean(normalizeText(process.env.PDD_CLIENT_SECRET)),
     pddPid: normalizeText(process.env.PDD_PID),
+  };
+}
+
+
+function getPidQueryResponse(data) {
+  return data?.p_id_query_response || data?.goods_pid_query_response || {};
+}
+
+function normalizeQueriedPid(item = {}) {
+  return {
+    p_id: item.p_id || item.pId || '',
+    pid_name: item.pid_name || item.pidName || item.p_id_name || '',
+    create_time: item.create_time || item.createTime || '',
+    status: item.status ?? null,
+  };
+}
+
+export async function queryPidByDefaultName() {
+  const data = await callPddApi('pdd.ddk.goods.pid.query', {
+    page: PID_QUERY_PAGE,
+    page_size: PID_QUERY_PAGE_SIZE,
+    status: PID_QUERY_STATUS,
+  });
+  const response = getPidQueryResponse(data);
+  const pidList = Array.isArray(response.p_id_list) ? response.p_id_list : [];
+  const normalizedPidList = pidList.map(normalizeQueriedPid);
+  const matchedPid = normalizedPidList.find((pid) => pid.pid_name === DEFAULT_PID_NAME) || null;
+
+  return {
+    matchedPid,
+    pidList: normalizedPidList,
+    total_count: Number(response.total_count ?? response.totalCount ?? normalizedPidList.length),
   };
 }
 
