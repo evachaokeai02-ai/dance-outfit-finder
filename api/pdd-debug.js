@@ -30,13 +30,8 @@ function getHeader(req, name) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function getSafeEnvPresence() {
-  const env = getPddEnvPresence();
-  return {
-    hasClientId: env.hasClientId,
-    hasClientSecret: env.hasClientSecret,
-    hasPid: env.hasPid,
-  };
+function getSafePidDiagnostics() {
+  return getPddEnvPresence();
 }
 
 function assertAdminAuthorized(req) {
@@ -46,21 +41,28 @@ function assertAdminAuthorized(req) {
 }
 
 function getDebugParams(body) {
-  return body.params && typeof body.params === 'object' && !Array.isArray(body.params) ? body.params : {};
+  const params = body.params && typeof body.params === 'object' && !Array.isArray(body.params) ? body.params : {};
+  const { custom_parameters, p_id, p_id_list, pid, ...safeParams } = params;
+  return safeParams;
+}
+
+function getConfiguredPid() {
+  return process.env.PDD_PID?.trim() || '';
 }
 
 function getAuthorityQueryParams(body) {
+  const pid = getConfiguredPid();
   return {
-    pid: normalizeText(body.pid) || normalizeText(process.env.PDD_PID),
     ...getDebugParams(body),
+    pid: pid || undefined,
   };
 }
 
 function getAuthorityUrlParams(body) {
-  const pid = normalizeText(body.pid) || normalizeText(process.env.PDD_PID);
+  const pid = getConfiguredPid();
   return {
-    p_id_list: pid ? JSON.stringify([pid]) : undefined,
     ...getDebugParams(body),
+    pid: pid || undefined,
   };
 }
 
@@ -85,16 +87,10 @@ function getActionConfig(action, body) {
 function sendError(res, error, action) {
   const isPddError = error instanceof PddApiError;
   const statusCode = isPddError ? error.statusCode : 500;
-  const env = getSafeEnvPresence();
+  const env = getSafePidDiagnostics();
 
   console.error('[pdd-debug] action failed', {
-    action,
-    hasClientId: env.hasClientId,
-    hasClientSecret: env.hasClientSecret,
-    hasPid: env.hasPid,
-    error: isPddError ? error.code : 'internal-error',
-    message: error instanceof Error ? error.message : 'Unknown error',
-    details: isPddError ? error.details : undefined,
+    ...env,
   });
 
   res.status(statusCode).json({
@@ -142,17 +138,13 @@ export default async function handler(req, res) {
   }
 
   const config = getActionConfig(action, body);
-  const env = getSafeEnvPresence();
+  const env = getSafePidDiagnostics();
 
   try {
     const data = await callPddApi(config.pddType, config.params);
 
     console.info('[pdd-debug] action succeeded', {
-      action,
-      pddType: config.pddType,
-      hasClientId: env.hasClientId,
-      hasClientSecret: env.hasClientSecret,
-      hasPid: env.hasPid,
+      ...env,
     });
 
     res.status(200).json({
