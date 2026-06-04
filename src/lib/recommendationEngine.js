@@ -147,6 +147,23 @@ function getSignatureTerms(info) {
   ]).filter((term) => String(term).length >= 2);
 }
 
+
+const productDisplayFallback = {
+  top: '上衣',
+  bottom: '下装',
+  shoes: '鞋子',
+  accessory: '配饰',
+};
+
+function compactDisplayText(value) {
+  return String(value || '').trim().replace(/[\s｜|,，、/\\]+/g, '');
+}
+
+function getProductDisplayTitle(product) {
+  const text = compactDisplayText(product?.displayTitle || productDisplayFallback[product?.category] || product?.name || '单品');
+  return text.length > 12 ? text.slice(0, 12) : text;
+}
+
 function scoreProduct(product, info) {
   const productTerms = getProductTerms(product);
   const keywordScore = (info.outfitKeywords || []).reduce((sum, keyword) => {
@@ -226,13 +243,13 @@ export function buildLooks(info, products) {
       bottom,
       shoes,
       accessory,
-      reason: `${config.reasonPrefix}${top.name}负责上半身记忆点，${bottom.name}拉出比例，${shoes.name}保证动作完成度。`,
+      reason: `${config.reasonPrefix}${getProductDisplayTitle(top)}负责上半身记忆点，${getProductDisplayTitle(bottom)}拉出比例，${getProductDisplayTitle(shoes)}保证动作完成度。`,
     };
   });
 }
 
 export function makeCopyText(look, info) {
-  return `今天跳《${info.danceName}》想走${look.styleLine}路线，搭了【${look.title}】：\n上衣：${look.top.name}\n下装：${look.bottom.name}\n鞋子：${look.shoes.name}\n配饰：${look.accessory.name}\n推荐理由：${look.reason}\n拍摄建议：${look.photoTip}\n#舞蹈穿搭 #打歌服灵感 #小红书穿搭 #跳舞视频`;
+  return `今天跳《${info.danceName}》想走${look.styleLine}路线，搭了【${look.title}】：\n上衣：${getProductDisplayTitle(look.top)}\n下装：${getProductDisplayTitle(look.bottom)}\n鞋子：${getProductDisplayTitle(look.shoes)}\n配饰：${getProductDisplayTitle(look.accessory)}\n推荐理由：${look.reason}\n拍摄建议：${look.photoTip}\n#舞蹈穿搭 #打歌服灵感 #小红书穿搭 #跳舞视频`;
 }
 
 export function makeEmptyForm(dance) {
