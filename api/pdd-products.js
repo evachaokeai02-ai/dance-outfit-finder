@@ -50,6 +50,16 @@ function toFallbackProduct(query, index, pddError = null, fallbackDebug = null) 
     shoes: '防滑舞蹈鞋',
     accessory: '舞台配饰',
   }[query.category] || '舞蹈单品';
+  const displayTitle = {
+    top: '上衣',
+    bottom: '下装',
+    shoes: '鞋子',
+    accessory: '配饰',
+  }[query.category] || '单品';
+  const displayTags = [...new Set([...(query.styleTags || []), ...(query.sceneTags || []), ...(query.danceTags || [])]
+    .map((tag) => String(tag || '').trim().replace(/[\s｜|,，、/\\]+/g, ''))
+    .filter((tag) => tag.length >= 2 && tag.length <= 5))]
+    .slice(0, 3);
 
   const pddDebug = getPddDebugFromError(pddError) || fallbackDebug || getProductsHandlerDebug();
   const failingPddType = getFailingPddType(pddError, pddDebug);
@@ -59,6 +69,12 @@ function toFallbackProduct(query, index, pddError = null, fallbackDebug = null) 
     id: `pdd-fallback-${query.category}-${index}`,
     name: `${query.keyword} ${categoryName}`,
     title: `${query.keyword} ${categoryName}`,
+    displayTitle,
+    displayTags,
+    rawKeyword: query.keyword,
+    searchQuery: query.keyword,
+    queryUsed: query.keyword,
+    queryAttempts: [query.keyword],
     category: query.category,
     styleTags: query.styleTags || [],
     sceneTags: query.sceneTags || [],
@@ -90,6 +106,11 @@ function toFallbackProduct(query, index, pddError = null, fallbackDebug = null) 
       thumbUrl: '',
       imageUrl: '',
       mallName: '',
+      fullGoodsName: `${query.keyword} ${categoryName}`,
+      rawKeyword: query.keyword,
+      searchQuery: query.keyword,
+      queryUsed: query.keyword,
+      queryAttempts: [query.keyword],
       pddDebug,
       promotionParamsDebug: pddDebug?.promotionType ? pddDebug : null,
     },

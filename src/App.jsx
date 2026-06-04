@@ -53,8 +53,8 @@ function App() {
   const [petMessage, setPetMessage] = useState('嗨～你来跳我的舞啦？先告诉我今天想跳哪支！');
 
   const activeProducts = useMemo(() => {
-    if (pddState.products.length > 0) return [...pddState.products, ...products];
-    return products;
+    const combinedProducts = pddState.products.length > 0 ? [...pddState.products, ...products] : products;
+    return combinedProducts.map(ensureProductDisplayFields);
   }, [pddState.products]);
   const looks = useMemo(() => (finalInfo ? buildLooks(finalInfo, activeProducts) : []), [activeProducts, finalInfo]);
 
@@ -661,13 +661,65 @@ function ResearchStatus({ info }) {
   );
 }
 
+
+const categoryDisplayFallback = {
+  top: '上衣',
+  bottom: '下装',
+  shoes: '鞋子',
+  accessory: '配饰',
+};
+
+function compactDisplayText(value) {
+  return String(value || '').trim().replace(/[\s｜|,，、/\\]+/g, '');
+}
+
+function clampDisplayText(value, maxLength) {
+  const text = compactDisplayText(value);
+  return text.length > maxLength ? text.slice(0, maxLength) : text;
+}
+
+function getDisplayTitle(product) {
+  return clampDisplayText(product?.displayTitle || categoryDisplayFallback[product?.category] || '单品', 12);
+}
+
+function getDisplayTags(product) {
+  const tags = Array.isArray(product?.displayTags) ? product.displayTags : [];
+  return [...new Set(tags.map((tag) => clampDisplayText(tag, 5)).filter((tag) => tag.length >= 2 && tag.length <= 5))].slice(0, 3);
+}
+
+function getProductAltText(product) {
+  return getDisplayTitle(product) || categoryName(product?.category);
+}
+
+
+function ensureProductDisplayFields(product) {
+  const displayTitle = getDisplayTitle(product);
+  const sourceTags = Array.isArray(product.displayTags) && product.displayTags.length > 0
+    ? product.displayTags
+    : [...(product.styleTags || []), ...(product.sceneTags || []), ...(product.danceTags || [])];
+  const displayTags = [...new Set(sourceTags.map((tag) => clampDisplayText(tag, 5)).filter((tag) => tag.length >= 2 && tag.length <= 5))].slice(0, 3);
+  return { ...product, displayTitle, displayTags };
+}
+
 function ProductRow({ label, product }) {
+  const displayTitle = getDisplayTitle(product);
+  const displayTags = getDisplayTags(product);
+
   return (
-    <div className="flex items-center gap-3 border-t border-rose/10 pt-3 first:border-t-0 first:pt-0">
+    <div className="flex min-w-0 items-center gap-3 overflow-hidden border-t border-rose/10 pt-3 first:border-t-0 first:pt-0">
       <ProductVisual product={product} small />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold text-stone-400">{label}</p>
-        <p className="truncate text-sm font-black text-ink">{product.name}</p>
+        <p className="product-title text-sm font-black text-ink" title={displayTitle}>{displayTitle}</p>
+        {displayTags.length > 0 && (
+          <div className="mt-1 flex max-w-full flex-wrap gap-1 overflow-hidden" aria-label="商品展示标签">
+            {displayTags.map((tag) => (
+              <span key={tag} className="product-tag rounded-full bg-blush px-2 py-0.5 text-[10px] font-black text-rose" title={tag}>
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
         {product.pdd?.salesTip && <p className="mt-0.5 text-xs font-semibold text-emerald-600">拼多多 {product.pdd.salesTip}</p>}
         {!product.link && product.linkMessage && <p className="mt-0.5 text-xs font-semibold text-amber-600">{product.linkMessage}</p>}
       </div>
@@ -681,7 +733,7 @@ function ProductRow({ label, product }) {
 function ProductVisual({ product, small = false }) {
   const productImageUrl = product.imageUrl || product.pdd?.imageUrl || product.pdd?.thumbUrl;
   const visualContent = productImageUrl ? (
-    <img className="h-full w-full object-cover" src={productImageUrl} alt={product.name} loading="lazy" referrerPolicy="no-referrer" />
+    <img className="h-full w-full object-cover" src={productImageUrl} alt={getProductAltText(product)} loading="lazy" referrerPolicy="no-referrer" />
   ) : (
     <span className={`${small ? 'text-xs' : 'text-sm'} font-black text-white drop-shadow`}>
       {categoryName(product.category)}
@@ -701,7 +753,7 @@ function ProductVisual({ product, small = false }) {
         href={productJumpUrl}
         target="_blank"
         rel="noreferrer"
-        aria-label={`打开${product.name}商品链接`}
+        aria-label={`打开${getProductAltText(product)}商品链接`}
         title="点击图片打开商品链接"
       >
         {visualContent}
@@ -713,7 +765,7 @@ function ProductVisual({ product, small = false }) {
     <div
       className={className}
       style={style}
-      aria-label={`${product.name}：${disabledTitle}`}
+      aria-label={`${getProductAltText(product)}：${disabledTitle}`}
       title={disabledTitle}
     >
       {visualContent}
