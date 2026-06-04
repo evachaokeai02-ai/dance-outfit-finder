@@ -8,6 +8,8 @@ const DEFAULT_PID_NAME = 'dancecloset-main';
 const PID_QUERY_PAGE = 1;
 const PID_QUERY_PAGE_SIZE = 100;
 const PID_QUERY_STATUS = 0;
+const GOODS_SEARCH_TYPE = 'pdd.ddk.goods.search';
+const GOODS_SEARCH_PID_FIELD = 'pid';
 const GOODS_PROMOTION_TYPE = 'pdd.ddk.goods.promotion.url.generate';
 const GOODS_PROMOTION_PID_FIELD = 'p_id';
 
@@ -119,7 +121,7 @@ export async function callPddApi(type, params = {}) {
     throw new PddApiError(`PDD API ${type} returned HTTP ${response.status}`, {
       statusCode: 502,
       code: 'pdd-http-error',
-      details: { httpStatus: response.status, response: data },
+      details: { httpStatus: response.status, response: data, pddType: type, failingPddType: type },
     });
   }
 
@@ -138,6 +140,8 @@ export async function callPddApi(type, params = {}) {
         pddSubCode: error.sub_code,
         pddSubMessage: error.sub_msg,
         requestId: error.request_id,
+        pddType: type,
+        failingPddType: type,
       },
     });
   }
@@ -179,6 +183,7 @@ function formatPromotionError(error, promotionParamsDebug = null) {
       message: error instanceof Error ? error.message : 'Unknown error',
       details: {},
       promotionParamsDebug,
+      pddDebug: promotionParamsDebug,
     });
   }
 
@@ -194,6 +199,7 @@ function formatPromotionError(error, promotionParamsDebug = null) {
     request_id: details.request_id,
     details,
     promotionParamsDebug,
+    pddDebug: promotionParamsDebug,
   });
 }
 
@@ -218,22 +224,66 @@ function getPddCustomParameters() {
   return normalizeText(process.env.PDD_CUSTOM_PARAMETERS) || undefined;
 }
 
-function getPromotionParamsDebug({ goodsId = '', goodsSign = '', goodsParamFieldUsed = '' } = {}) {
+function getPddDebug({
+  pddType = '',
+  failingPddType = '',
+  failingStage = '',
+  pidFieldNameUsed = '',
+  goodsParamFieldUsed = '',
+  searchParamFieldsUsed = [],
+  goodsId = '',
+  goodsSign = '',
+} = {}) {
   const pidDiagnostics = getPddPidDiagnostics();
   const customParameters = getPddCustomParameters();
 
   return {
-    promotionType: GOODS_PROMOTION_TYPE,
+    pddType,
+    failingPddType: failingPddType || pddType,
+    failingStage,
     hasPid: pidDiagnostics.hasPid,
     pidLength: pidDiagnostics.pidLength,
     pidHasUnderscore: pidDiagnostics.pidHasUnderscore,
     pidPrefixMatchesDuoId: pidDiagnostics.pidPrefixMatchesDuoId,
-    pidFieldNameUsed: GOODS_PROMOTION_PID_FIELD,
+    pidFieldNameUsed,
     hasCustomParameters: Boolean(customParameters),
     goodsParamFieldUsed,
+    searchParamFieldsUsed,
     hasGoodsSign: Boolean(normalizeText(goodsSign)),
     hasGoodsId: Boolean(normalizeText(goodsId)),
   };
+}
+
+function getPromotionParamsDebug({ goodsId = '', goodsSign = '', goodsParamFieldUsed = '', failingStage = 'promotion-url-generate' } = {}) {
+  return {
+    promotionType: GOODS_PROMOTION_TYPE,
+    ...getPddDebug({
+      pddType: GOODS_PROMOTION_TYPE,
+      failingStage,
+      pidFieldNameUsed: GOODS_PROMOTION_PID_FIELD,
+      goodsParamFieldUsed,
+      goodsId,
+      goodsSign,
+    }),
+  };
+}
+
+
+function getGoodsSearchDebug({ searchParamFieldsUsed = [] } = {}) {
+  return getPddDebug({
+    pddType: GOODS_SEARCH_TYPE,
+    failingStage: 'goods-search',
+    pidFieldNameUsed: GOODS_SEARCH_PID_FIELD,
+    searchParamFieldsUsed,
+  });
+}
+
+export function getProductsHandlerDebug() {
+  return getPddDebug({
+    pddType: 'products-handler',
+    failingPddType: 'products-handler',
+    failingStage: 'products-handler',
+  });
 }
 
 function getAuthorityQueryParams() {
@@ -492,6 +542,7 @@ function toPublicProduct(goods, promotion = {}) {
     weAppInfo: promotion.weAppInfo || null,
     promotionError: promotion.error || '',
     promotionParamsDebug: promotion.promotionParamsDebug || null,
+    pddDebug: promotion.pddDebug || promotion.promotionParamsDebug || null,
   };
 }
 
@@ -535,6 +586,8 @@ export async function generatePromotionLink({ goodsId, goodsSign }) {
     if (error instanceof PddApiError) {
       error.details = {
         ...(error.details || {}),
+        failingStage: 'promotion-url-generate',
+        pddDebug: promotionParamsDebug,
         promotionParamsDebug,
       };
     }
@@ -562,6 +615,7 @@ export async function generatePromotionLink({ goodsId, goodsSign }) {
     weAppWebViewUrl: promotion.weAppWebViewUrl,
     weAppInfo: promotion.weAppInfo,
     promotionParamsDebug,
+    pddDebug: promotionParamsDebug,
   };
 }
 
@@ -573,13 +627,39 @@ export async function searchGoods({ keyword, page = DEFAULT_PAGE, pageSize = DEF
 
   const safePage = Math.max(Number(page) || DEFAULT_PAGE, 1);
   const safePageSize = clampPageSize(pageSize);
-  const data = await callPddApi('pdd.ddk.goods.search', {
+  const customParameters = getPddCustomParameters();
+  const params = {
     keyword: normalizedKeyword,
     page: safePage,
     page_size: safePageSize,
     sort_type: Number(sortType) || 0,
     with_coupon: Boolean(withCoupon),
+    [GOODS_SEARCH_PID_FIELD]: requirePddPid(),
+  };
+
+  if (customParameters) {
+    params.custom_parameters = customParameters;
+  }
+
+  const searchParamsDebug = getGoodsSearchDebug({
+    searchParamFieldsUsed: Object.keys(params),
   });
+  let data;
+
+  try {
+    data = await callPddApi(GOODS_SEARCH_TYPE, params);
+  } catch (error) {
+    if (error instanceof PddApiError) {
+      error.details = {
+        ...(error.details || {}),
+        pddType: error.details?.pddType || GOODS_SEARCH_TYPE,
+        failingPddType: error.details?.failingPddType || GOODS_SEARCH_TYPE,
+        failingStage: 'goods-search',
+        pddDebug: searchParamsDebug,
+      };
+    }
+    throw error;
+  }
   const goodsList = data?.goods_search_response?.goods_list || [];
   const products = await Promise.all(
     goodsList.map(async (goods) => {
@@ -606,6 +686,7 @@ export async function searchGoods({ keyword, page = DEFAULT_PAGE, pageSize = DEF
     pageSize: safePageSize,
     total: Number(data?.goods_search_response?.total_count || products.length),
     products,
+    pddDebug: searchParamsDebug,
   };
 }
 
@@ -637,6 +718,9 @@ export function toRecommendationProduct(product, query, index = 0) {
         '链接生成失败/暂不可跳转',
     promotionError: product.promotionError || '',
     promotionParamsDebug: product.promotionParamsDebug || product.promotionError?.promotionParamsDebug || null,
+    pddDebug: product.pddDebug || product.promotionParamsDebug || product.promotionError?.pddDebug || product.promotionError?.promotionParamsDebug || null,
+    failingPddType: product.promotionError?.pddDebug?.failingPddType || product.promotionError?.promotionParamsDebug?.failingPddType || '',
+    failingStage: product.promotionError?.pddDebug?.failingStage || product.promotionError?.promotionParamsDebug?.failingStage || '',
     pdd: {
       goodsId: product.goodsId,
       goodsSign: product.goodsSign,
@@ -656,6 +740,7 @@ export function toRecommendationProduct(product, query, index = 0) {
       weAppInfo: product.weAppInfo || null,
       promotionError: product.promotionError || '',
       promotionParamsDebug: product.promotionParamsDebug || product.promotionError?.promotionParamsDebug || null,
+      pddDebug: product.pddDebug || product.promotionParamsDebug || product.promotionError?.pddDebug || product.promotionError?.promotionParamsDebug || null,
     },
   };
 }
