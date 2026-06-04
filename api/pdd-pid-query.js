@@ -2,6 +2,12 @@ import { getPddEnvPresence, PddApiError, queryPidByDefaultName } from './_lib/pd
 
 const PID_PREVIEW_LIMIT = 10;
 
+function maskPid(value) {
+  const text = String(value || '');
+  if (!text) return '';
+  return `${text.slice(0, 4)}...${text.slice(-4)}`;
+}
+
 function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -13,6 +19,7 @@ function getSafeEnvPresence() {
   return {
     hasClientId: env.hasClientId,
     hasClientSecret: env.hasClientSecret,
+    hasPid: env.hasPid,
   };
 }
 
@@ -24,6 +31,7 @@ function sendError(res, error) {
   console.error('[pdd-pid-query] query failed', {
     hasClientId: env.hasClientId,
     hasClientSecret: env.hasClientSecret,
+    hasPid: env.hasPid,
     error: error instanceof PddApiError ? error.code : 'internal-error',
     message: error instanceof Error ? error.message : 'Unknown error',
     details,
@@ -61,8 +69,9 @@ export default async function handler(req, res) {
       console.info('[pdd-pid-query] matched pid', {
         hasClientId: env.hasClientId,
         hasClientSecret: env.hasClientSecret,
+        hasPid: env.hasPid,
         pid_name: result.matchedPid.pid_name,
-        p_id: result.matchedPid.p_id,
+        p_id_preview: maskPid(result.matchedPid.p_id),
         create_time: result.matchedPid.create_time,
         status: result.matchedPid.status,
         total_count: result.total_count,
@@ -89,6 +98,7 @@ export default async function handler(req, res) {
     console.info('[pdd-pid-query] no matching pid found', {
       hasClientId: env.hasClientId,
       hasClientSecret: env.hasClientSecret,
+      hasPid: env.hasPid,
       total_count: result.total_count,
       preview_count: preview.length,
     });

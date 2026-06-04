@@ -157,7 +157,7 @@ export function getPddEnvPresence() {
   return {
     hasClientId: Boolean(normalizeText(process.env.PDD_CLIENT_ID)),
     hasClientSecret: Boolean(normalizeText(process.env.PDD_CLIENT_SECRET)),
-    pddPid: normalizeText(process.env.PDD_PID),
+    hasPid: Boolean(normalizeText(process.env.PDD_PID)),
   };
 }
 
@@ -232,11 +232,12 @@ function normalizePublicUrl(value) {
 
 function getFirstImage(goods) {
   return normalizePublicUrl(
-    goods.goods_thumbnail_url ||
-      goods.goods_image_url ||
+    goods.goods_image_url ||
+      goods.goods_thumbnail_url ||
+      (Array.isArray(goods.goods_gallery_urls) ? goods.goods_gallery_urls[0] : '') ||
       goods.hd_thumb_url ||
       goods.image_url ||
-      (Array.isArray(goods.goods_gallery_urls) ? goods.goods_gallery_urls[0] : '')
+      ''
   );
 }
 
@@ -287,12 +288,20 @@ function toPublicProduct(goods, promotion = {}) {
     goodsId: String(goods.goods_id || ''),
     goodsSign: goods.goods_sign || '',
     goodsName: goods.goods_name || '',
+    goods_id: String(goods.goods_id || ''),
+    goods_sign: goods.goods_sign || '',
+    goods_name: goods.goods_name || '',
+    goods_image_url: normalizePublicUrl(goods.goods_image_url || ''),
+    goods_thumbnail_url: normalizePublicUrl(goods.goods_thumbnail_url || ''),
+    goods_gallery_urls: Array.isArray(goods.goods_gallery_urls) ? goods.goods_gallery_urls.map(normalizePublicUrl).filter(Boolean) : [],
     goodsImage: getFirstImage(goods),
+    imageUrl: getFirstImage(goods),
     price: centsToYuan(minPrice),
     couponPrice: centsToYuan(couponPrice || minPrice),
     mallName: goods.mall_name || '',
     promotionLink: promotion.promotionUrl || '',
     promotionUrl: promotion.promotionUrl || '',
+    jumpUrl: promotion.promotionUrl || '',
     mobileUrl: promotion.mobileUrl || '',
     shortUrl: promotion.shortUrl || '',
     url: promotion.url || '',
@@ -316,8 +325,6 @@ export async function generatePromotionLink({ goodsId, goodsSign }) {
 
   const params = {
     p_id: pId,
-    generate_short_url: true,
-    generate_we_app: true,
   };
 
   if (normalizedGoodsSign) {
@@ -372,8 +379,23 @@ export async function searchGoods({ keyword, page = DEFAULT_PAGE, pageSize = DEF
         const promotion = await generatePromotionLink({ goodsId: goods.goods_id, goodsSign: goods.goods_sign });
         return toPublicProduct(goods, promotion);
       } catch (error) {
+        const promotionError = formatPromotionError(error);
+        console.error('[pdd-promotion] url generate failed', {
+          hasClientId: Boolean(normalizeText(process.env.PDD_CLIENT_ID)),
+          hasClientSecret: Boolean(normalizeText(process.env.PDD_CLIENT_SECRET)),
+          hasPid: Boolean(normalizeText(process.env.PDD_PID)),
+          goods_id: String(goods.goods_id || ''),
+          has_goods_sign: Boolean(normalizeText(goods.goods_sign)),
+          error_code: promotionError.error_code,
+          error_msg: promotionError.error_msg,
+          sub_code: promotionError.sub_code,
+          sub_msg: promotionError.sub_msg,
+          request_id: promotionError.request_id,
+          code: promotionError.code,
+          message: promotionError.message,
+        });
         return toPublicProduct(goods, {
-          error: formatPromotionError(error),
+          error: promotionError,
         });
       }
     })
@@ -393,6 +415,7 @@ export function toRecommendationProduct(product, query, index = 0) {
   return {
     id: `pdd-${query.category}-${product.goodsSign || product.goodsId || index}`,
     name: product.goodsName || query.keyword,
+    title: product.goodsName || query.keyword,
     category: query.category,
     styleTags: query.styleTags || [],
     sceneTags: query.sceneTags || [],
@@ -400,17 +423,24 @@ export function toRecommendationProduct(product, query, index = 0) {
     bodyTags: query.bodyTags || [],
     priceRange: priceInCents && priceInCents <= 10000 ? '100以内' : priceInCents && priceInCents <= 30000 ? '100-300' : '300-500',
     image: query.image || 'rose-black',
+    imageUrl: product.imageUrl || product.goodsImage || '',
     link: normalizePublicUrl(product.promotionLink),
+    jumpUrl: normalizePublicUrl(product.jumpUrl || product.promotionLink),
     source: 'pdd',
     linkStatus: product.promotionLink ? 'ready' : 'failed',
     linkMessage: product.promotionLink ? '' : product.promotionError?.error_msg || product.promotionError?.message || '链接生成失败/暂不可跳转',
+    promotionError: product.promotionError || '',
     pdd: {
       goodsId: product.goodsId,
       goodsSign: product.goodsSign,
       minGroupPrice: Math.round(Number(product.price || 0) * 100),
       couponPrice: Math.round(Number(product.couponPrice || 0) * 100),
-      thumbUrl: product.goodsImage,
+      thumbUrl: product.imageUrl || product.goodsImage,
+      imageUrl: product.imageUrl || product.goodsImage,
       mallName: product.mallName,
+      goods_image_url: product.goods_image_url || '',
+      goods_thumbnail_url: product.goods_thumbnail_url || '',
+      goods_gallery_urls: product.goods_gallery_urls || [],
       promotionUrl: normalizePublicUrl(product.promotionUrl || product.promotionLink),
       mobileUrl: normalizePublicUrl(product.mobileUrl),
       shortUrl: normalizePublicUrl(product.shortUrl),

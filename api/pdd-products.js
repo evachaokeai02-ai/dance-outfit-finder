@@ -25,6 +25,7 @@ function toFallbackProduct(query, index) {
   return {
     id: `pdd-fallback-${query.category}-${index}`,
     name: `${query.keyword} ${categoryName}`,
+    title: `${query.keyword} ${categoryName}`,
     category: query.category,
     styleTags: query.styleTags || [],
     sceneTags: query.sceneTags || [],
@@ -32,14 +33,18 @@ function toFallbackProduct(query, index) {
     bodyTags: query.bodyTags || [],
     priceRange: '100-300',
     image: query.image || 'rose-black',
+    imageUrl: '',
     link: '',
+    jumpUrl: '',
     source: 'pdd-unavailable',
     linkStatus: 'failed',
     linkMessage: '链接生成失败/暂不可跳转',
+    promotionError: '',
     pdd: {
       goodsId: '',
       goodsSign: '',
       thumbUrl: '',
+      imageUrl: '',
       mallName: '',
     },
   };
