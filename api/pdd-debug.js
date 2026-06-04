@@ -1,6 +1,6 @@
-import { callPddApi, getPddEnvPresence, PddApiError } from './_lib/pdd.js';
+import { callPddApi, getPddEnvPresence, getPddSafeHashes, PddApiError, queryConfiguredPidInventory } from './_lib/pdd.js';
 
-const ACTIONS = new Set(['authority-query', 'authority-url']);
+const ACTIONS = new Set(['authority-query', 'authority-url', 'pid-query']);
 
 function normalizeText(value) {
   return String(value || '').trim();
@@ -81,6 +81,13 @@ function getActionConfig(action, body) {
     };
   }
 
+  if (action === 'pid-query') {
+    return {
+      pddType: 'pdd.ddk.goods.pid.query',
+      params: { page: 1, page_size: 100, status: 0 },
+    };
+  }
+
   return null;
 }
 
@@ -132,7 +139,7 @@ export default async function handler(req, res) {
     res.status(400).json({
       ok: false,
       error: 'invalid-action',
-      message: 'action must be one of: authority-query, authority-url',
+      message: 'action must be one of: authority-query, authority-url, pid-query',
     });
     return;
   }
@@ -141,17 +148,32 @@ export default async function handler(req, res) {
   const env = getSafePidDiagnostics();
 
   try {
-    const data = await callPddApi(config.pddType, config.params);
+    const result = action === 'pid-query' ? await queryConfiguredPidInventory() : await callPddApi(config.pddType, config.params);
 
     console.info('[pdd-debug] action succeeded', {
       ...env,
     });
 
+    if (action === 'pid-query') {
+      res.status(200).json({
+        ok: true,
+        action,
+        pddType: config.pddType,
+        total_count: result.total_count,
+        pidList: result.pidList,
+        matchedByConfiguredPid: result.matchedByConfiguredPid,
+        matchedByName: result.matchedByName,
+        hashes: getPddSafeHashes(),
+        env,
+      });
+      return;
+    }
+
     res.status(200).json({
       ok: true,
       action,
       pddType: config.pddType,
-      data,
+      data: result,
       env,
     });
   } catch (error) {
