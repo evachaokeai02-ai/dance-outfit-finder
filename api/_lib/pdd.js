@@ -168,6 +168,7 @@ export function getPddEnvPresence() {
     hasClientId: Boolean(normalizeText(process.env.PDD_CLIENT_ID)),
     hasClientSecret: Boolean(normalizeText(process.env.PDD_CLIENT_SECRET)),
     hasPid: Boolean(normalizeText(process.env.PDD_PID)),
+    hasCustomParameters: Boolean(normalizeText(process.env.PDD_CUSTOM_PARAMETERS)),
   };
 }
 
@@ -220,6 +221,73 @@ export async function generatePid() {
   }
 
   return pid;
+}
+
+function getAuthorityParams() {
+  const params = {
+    pid: requireEnv('PDD_PID'),
+  };
+  const customParameters = normalizeText(process.env.PDD_CUSTOM_PARAMETERS);
+
+  if (customParameters) {
+    params.custom_parameters = customParameters;
+  }
+
+  return params;
+}
+
+function getAuthorityQueryResponse(data) {
+  return data?.authority_query_response || {};
+}
+
+export async function queryMemberAuthority() {
+  const response = getAuthorityQueryResponse(
+    await callPddApi('pdd.ddk.member.authority.query', getAuthorityParams())
+  );
+
+  return {
+    bind: response.bind ?? null,
+    request_id: response.request_id || '',
+  };
+}
+
+function normalizeAuthorityWeAppInfo(info) {
+  if (!info || typeof info !== 'object') return null;
+
+  return {
+    app_id: info.app_id || info.appId || '',
+    page_path: info.page_path || info.pagePath || '',
+    user_name: info.user_name || info.userName || '',
+    we_app_icon_url: normalizePublicUrl(info.we_app_icon_url || info.weAppIconUrl || ''),
+    banner_url: normalizePublicUrl(info.banner_url || info.bannerUrl || ''),
+    desc: info.desc || '',
+    source_display_name: info.source_display_name || info.sourceDisplayName || '',
+    title: info.title || '',
+  };
+}
+
+function getAuthorityUrlItem(data) {
+  return data?.rp_promotion_url_generate_response?.url_list?.[0] || {};
+}
+
+export async function generateMemberAuthorityUrl() {
+  const data = await callPddApi('pdd.ddk.rp.prom.url.generate', {
+    ...getAuthorityParams(),
+    channel_type: 10,
+    generate_we_app: true,
+  });
+  const response = data?.rp_promotion_url_generate_response || {};
+  const item = getAuthorityUrlItem(data);
+  const weAppInfo = normalizeAuthorityWeAppInfo(item.we_app_info || item.weAppInfo);
+
+  return {
+    url: normalizePublicUrl(item.url || ''),
+    mobile_url: normalizePublicUrl(item.mobile_url || item.mobileUrl || ''),
+    schema_url: normalizePublicUrl(item.schema_url || item.schemaUrl || ''),
+    short_url: normalizePublicUrl(item.short_url || item.shortUrl || item.mobile_short_url || item.mobileShortUrl || ''),
+    we_app_info: weAppInfo,
+    request_id: response.request_id || response.requestId || '',
+  };
 }
 
 function centsToYuan(value) {
