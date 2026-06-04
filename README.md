@@ -27,10 +27,19 @@ npm run build
 | --- | --- | --- | --- |
 | `/api/outfit-profile` | `GET` / `POST` | 输入用户搜索，输出可直接喂给推荐引擎的结构化 `finalInfo` | 本地规则 fallback，可替换模型 |
 | `/api/outfit-events` | `POST` | 记录 query、generated profile、products、selected looks 到数据库 | Supabase 可选配置 |
-| `/api/outfit-keywords` | `GET` / `POST` | 根据 `danceName`、`style`、`color`、`scene`、`body`、`budget` 生成商品搜索关键词 | 本地规则生成 |
-| `/api/pdd-search` | `GET` / `POST` | 根据 `keyword` 搜索商品并尝试生成多多进宝推广链接 | 返回真实 PDD 商品；推广链接失败时字段为空并返回错误信息 |
-| `/api/pdd-link` | `GET` / `POST` | 根据 `goodsId` / `goodsSign` 生成推广 / 跳转链接 | 返回真实多多进宝推广链接；环境变量缺失会返回明确错误 |
-| `/api/pdd-debug` | `POST` | 管理员调试多多进宝授权备案，使用 `body.action` 区分 `authority-query` / `authority-url` | 如配置 `ADMIN_TOKEN`，必须传 `x-admin-token` |
+| `/api/pdd-products` | `POST` | 前端商品推荐接口；服务端调用 PDD `goods.search` 并生成推广链接 | 生产接口；前端正在使用 |
+| `/api/outfit-keywords` | `GET` / `POST` | 根据 `danceName`、`style`、`color`、`scene`、`body`、`budget` 生成商品搜索关键词 | 生产工具接口；当前前端未直接调用 |
+| `/api/pdd-search` | `GET` / `POST` | 根据 `keyword` 搜索商品并尝试生成多多进宝推广链接 | 生产工具接口；当前前端未直接调用 |
+| `/api/pdd-link` | `GET` / `POST` | 根据 `goodsId` / `goodsSign` 生成推广 / 跳转链接 | 生产工具接口；当前前端未直接调用 |
+| `/api/pdd-debug` | `POST` | 管理员调试多多进宝，使用 `body.action` 区分 `pid-query` / `authority-query` / `authority-url` | 受保护调试接口；必须配置并传入 `x-admin-token` |
+
+
+### API 清理状态
+
+- 已删除接入阶段临时调试函数：`/api/pdd-authority-query`、`/api/pdd-authority-url`；`/api/pdd-pid`、`/api/pdd-pid-query` 当前不存在。
+- 当前 `api/` 下保留 7 个 Vercel API 文件：`outfit-profile.js`、`outfit-events.js`、`pdd-products.js`、`pdd-debug.js`、`outfit-keywords.ts`、`pdd-search.ts`、`pdd-link.ts`。
+- 当前前端真实调用的核心生产接口是 `/api/outfit-profile`、`/api/outfit-events`、`/api/pdd-products`。
+- 所有后续 PDD 临时调试能力统一走 `/api/pdd-debug` 的 `body.action`，不要新增独立 `api/` 文件。
 
 ### 示例请求
 
@@ -56,7 +65,7 @@ PDD_CLIENT_SECRET=your_client_secret
 PDD_PID=your_pid
 # 可选；仅用于安全诊断 pid 前缀是否匹配 duo_id，不会输出完整 PID
 PDD_DUO_ID=your_duo_id
-# 可选；配置后 /api/pdd-debug 必须携带匹配的 x-admin-token
+# 必填；未配置时 /api/pdd-debug 默认不可用
 ADMIN_TOKEN=your_admin_token
 ```
 
@@ -78,7 +87,7 @@ PDD_CLIENT_SECRET=your_client_secret
 PDD_PID=your_pid
 # 可选；仅用于安全诊断 pid 前缀是否匹配 duo_id，不会输出完整 PID
 PDD_DUO_ID=your_duo_id
-# 可选；配置后 /api/pdd-debug 必须携带匹配的 x-admin-token
+# 必填；未配置时 /api/pdd-debug 默认不可用
 ADMIN_TOKEN=your_admin_token
 ```
 
@@ -99,7 +108,7 @@ SUPABASE_OUTFIT_EVENTS_TABLE=outfit_events
 1. 打开 **Settings**。
 2. 打开 **Environment Variables**。
 3. 新增 `PDD_CLIENT_ID`、`PDD_CLIENT_SECRET`、`PDD_PID`。
-4. 如需使用 `/api/pdd-debug`，建议新增 `ADMIN_TOKEN`，并在请求头传入匹配的 `x-admin-token`。
+4. 如需使用 `/api/pdd-debug`，必须新增 `ADMIN_TOKEN`，并在请求头传入匹配的 `x-admin-token`；未配置时该接口默认不可用。
 5. 如需持久化搜索和生成结果，新增 `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`、`SUPABASE_OUTFIT_EVENTS_TABLE`。
 6. 如需把本地 fallback 替换为真实模型，新增 `OPENAI_API_KEY`。
 7. 按需选择 Production / Preview / Development 环境。
@@ -107,6 +116,6 @@ SUPABASE_OUTFIT_EVENTS_TABLE=outfit_events
 
 ## 安全原则
 
-- 前端只调用 `/api/outfit-profile`、`/api/outfit-events`、`/api/outfit-keywords`、`/api/pdd-products`、`/api/pdd-search`、`/api/pdd-link` 等自有生产接口；PDD 临时调试统一走受保护的 `/api/pdd-debug`。
-- PDD 签名、推广位 PID、推广链接生成等逻辑放在 Serverless Functions 里。
+- 前端当前只直接调用 `/api/outfit-profile`、`/api/outfit-events`、`/api/pdd-products`；PDD 临时调试统一走受 `ADMIN_TOKEN` 保护的 `/api/pdd-debug`，不要新增独立调试函数。
+- PDD 签名、推广位 PID、推广链接生成等逻辑放在 Serverless Functions 里；共享 PDD 代码放在根目录 `lib/`，避免被 Vercel 识别成额外 API 函数。
 - `/api/pdd-products` 会在服务端环境变量齐全时调用 PDD 官方搜索接口，并在返回给前端前批量调用推广链接生成接口；推广链接生成失败时不会回退到任意占位或搜索 URL，商品卡片保持不可跳转并显示“链接生成失败/暂不可跳转”。

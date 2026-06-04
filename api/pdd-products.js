@@ -1,4 +1,4 @@
-import { getProductsHandlerDebug, isPddConfigured, PddApiError, searchGoods, toRecommendationProduct } from './_lib/pdd.js';
+import { getProductsHandlerDebug, isPddConfigured, PddApiError, searchGoods, toRecommendationProduct } from '../lib/pdd.js';
 
 const DEFAULT_PAGE_SIZE = 8;
 
