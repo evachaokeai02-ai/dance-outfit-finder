@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 const PDD_ENDPOINT = 'https://gw-api.pinduoduo.com/api/router';
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 10;
-const MAX_PAGE_SIZE = 40;
+const MAX_PAGE_SIZE = 100;
 const DEFAULT_PID_NAME = 'dancecloset-main';
 const PID_QUERY_PAGE = 1;
 const PID_QUERY_PAGE_SIZE = 100;
@@ -39,6 +39,16 @@ function compactObject(payload) {
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined && value !== null && value !== '')
   );
+}
+
+function clampPageSize(value) {
+  const numericValue = Number(value || DEFAULT_PAGE_SIZE);
+
+  if (!Number.isFinite(numericValue)) {
+    return DEFAULT_PAGE_SIZE;
+  }
+
+  return Math.min(MAX_PAGE_SIZE, Math.max(DEFAULT_PAGE_SIZE, numericValue));
 }
 
 export function signPddPayload(payload, clientSecret) {
@@ -364,7 +374,7 @@ export async function searchGoods({ keyword, page = DEFAULT_PAGE, pageSize = DEF
   }
 
   const safePage = Math.max(Number(page) || DEFAULT_PAGE, 1);
-  const safePageSize = Math.min(Math.max(Number(pageSize) || DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
+  const safePageSize = clampPageSize(pageSize);
   const data = await callPddApi('pdd.ddk.goods.search', {
     keyword: normalizedKeyword,
     page: safePage,
