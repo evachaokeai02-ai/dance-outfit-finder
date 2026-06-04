@@ -14,7 +14,17 @@ function parseBody(body) {
   return body;
 }
 
-function toFallbackProduct(query, index) {
+function normalizePddError(error) {
+  if (!error) return null;
+
+  return {
+    message: error.message || 'Unknown error',
+    code: error instanceof PddApiError ? error.code : 'internal-error',
+    details: error instanceof PddApiError ? error.details : undefined,
+  };
+}
+
+function toFallbackProduct(query, index, pddError = null) {
   const categoryName = {
     top: '短款上衣',
     bottom: '高腰下装',
@@ -38,8 +48,8 @@ function toFallbackProduct(query, index) {
     jumpUrl: '',
     source: 'pdd-unavailable',
     linkStatus: 'failed',
-    linkMessage: '链接生成失败/暂不可跳转',
-    promotionError: '',
+    linkMessage: pddError?.message || '链接生成失败/暂不可跳转',
+    promotionError: pddError || '',
     pdd: {
       goodsId: '',
       goodsSign: '',
@@ -48,6 +58,30 @@ function toFallbackProduct(query, index) {
       mallName: '',
     },
   };
+}
+
+function firstPddError(results) {
+  return results.find((item) => item.pddError)?.pddError || null;
+}
+
+function fallbackPddError(results) {
+  return firstPddError(results) || {
+    code: 'empty-goods-list',
+    message: 'PDD search succeeded but goods_list was empty for every query.',
+    details: {
+      emptyQueries: results
+        .filter((item) => item.goodsListEmpty)
+        .map((item) => ({ keyword: item.keyword, category: item.category })),
+    },
+  };
+}
+
+function fallbackProductsForQueries(queries, pddError) {
+  return queries.map((query, index) => toFallbackProduct(query, index, pddError));
+}
+
+function getDisplayLimit(limit) {
+  return Math.max(1, Number(limit) || 2);
 }
 
 async function searchOne(query) {
@@ -60,17 +94,20 @@ async function searchOne(query) {
       withCoupon: query.withCoupon ?? false,
     });
     const products = result.products
-      .slice(0, query.limit || 2)
+      .slice(0, getDisplayLimit(query.limit))
       .map((product, index) => toRecommendationProduct(product, query, index));
 
-    return { ...query, products };
+    return { ...query, products, pddError: null, goodsListEmpty: result.products.length === 0 };
   } catch (error) {
+    const pddError = normalizePddError(error);
+
     return {
       ...query,
-      products: [toFallbackProduct(query, 0)],
-      error: error.message,
-      errorCode: error instanceof PddApiError ? error.code : 'internal-error',
-      details: error instanceof PddApiError ? error.details : undefined,
+      products: [],
+      pddError,
+      error: pddError.message,
+      errorCode: pddError.code,
+      details: pddError.details,
     };
   }
 }
@@ -102,17 +139,33 @@ export default async function handler(request, response) {
     }
 
     const results = await Promise.all(queries.map(searchOne));
-    const products = results.flatMap((item) => item.products || []);
+    const pddProducts = results.flatMap((item) => item.products || []);
     const failed = results.filter((item) => item.error);
+    const pddError = fallbackPddError(results);
+    const fallbackReason = pddProducts.length
+      ? ''
+      : failed.length === results.length
+        ? 'all-pdd-searches-failed'
+        : 'pdd-goods-list-empty';
+    const products = fallbackReason ? fallbackProductsForQueries(queries, pddError) : pddProducts;
 
     response.status(200).json({
       enabled: true,
       products,
       results,
+      fallbackReason,
+      pddError: fallbackReason ? pddError : null,
       error: failed.length ? 'some-pdd-queries-failed' : '',
-      message: failed.length ? 'Some PDD searches failed; affected product cards are not clickable until promotion links can be generated.' : '',
+      message: failed.length ? 'Some PDD searches failed; returning fallback products only if every PDD search failed or returned no goods.' : '',
     });
   } catch (error) {
-    response.status(500).json({ enabled: false, products: [], error: 'pdd-products-error', message: error.message });
+    response.status(500).json({
+      enabled: false,
+      products: [],
+      fallbackReason: 'pdd-products-handler-error',
+      pddError: normalizePddError(error),
+      error: 'pdd-products-error',
+      message: error.message,
+    });
   }
 }
