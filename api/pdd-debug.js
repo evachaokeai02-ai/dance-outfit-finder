@@ -1,4 +1,4 @@
-import { callPddApi, getPddEnvPresence, getPddSafeHashes, PddApiError, queryConfiguredPidInventory } from './_lib/pdd.js';
+import { callPddApi, getPddEnvPresence, PddApiError, queryConfiguredPidInventory } from './_lib/pdd.js';
 
 const ACTIONS = new Set(['authority-query', 'authority-url', 'pid-query']);
 
@@ -62,7 +62,9 @@ function getAuthorityUrlParams(body) {
   const pid = getConfiguredPid();
   return {
     ...getDebugParams(body),
-    pid: pid || undefined,
+    p_id_list: pid ? [pid] : undefined,
+    channel_type: 10,
+    generate_we_app: true,
   };
 }
 
@@ -163,7 +165,6 @@ export default async function handler(req, res) {
         pidList: result.pidList,
         matchedByConfiguredPid: result.matchedByConfiguredPid,
         matchedByName: result.matchedByName,
-        hashes: getPddSafeHashes(),
         env,
       });
       return;

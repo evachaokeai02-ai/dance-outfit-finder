@@ -23,13 +23,6 @@ function normalizeText(value) {
   return String(value || '').trim();
 }
 
-function sha256Short(value) {
-  const normalizedValue = normalizeText(value);
-  if (!normalizedValue) return null;
-
-  return crypto.createHash('sha256').update(normalizedValue, 'utf8').digest('hex').slice(0, 8);
-}
-
 function requireEnv(name) {
   const value = normalizeText(process.env[name]);
   if (!value) {
@@ -58,6 +51,10 @@ function compactObject(payload) {
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined && value !== null && value !== '')
   );
+}
+
+function serializePddParamValue(value) {
+  return Array.isArray(value) ? JSON.stringify(value) : String(value);
 }
 
 function clampPageSize(value) {
@@ -91,11 +88,11 @@ export async function callPddApi(type, params = {}) {
     client_id: clientId,
     timestamp: Math.floor(Date.now() / 1000),
     data_type: 'JSON',
-    ...params,
+    ...Object.fromEntries(Object.entries(params).map(([key, value]) => [key, serializePddParamValue(value)])),
   });
   const sign = signPddPayload(payload, clientSecret);
   const body = new URLSearchParams({
-    ...Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, String(value)])),
+    ...payload,
     sign,
   });
 
@@ -199,26 +196,28 @@ export function getPddEnvPresence() {
   return getPddPidDiagnostics();
 }
 
-export function getPddSafeHashes() {
-  const pid = normalizeText(process.env.PDD_PID);
-  const pidPrefix = pid.split('_')[0] || '';
-
-  return {
-    clientIdHash: sha256Short(process.env.PDD_CLIENT_ID),
-    pidPrefixHash: sha256Short(pidPrefix),
-  };
-}
-
 function getPddCustomParameters() {
   return normalizeText(process.env.PDD_CUSTOM_PARAMETERS) || undefined;
 }
 
-function getAuthorityBaseParams() {
+function getAuthorityQueryParams() {
   const customParameters = getPddCustomParameters();
 
   return compactObject({
     pid: requirePddPid(),
     custom_parameters: customParameters,
+  });
+}
+
+function getAuthorityUrlParams() {
+  const customParameters = getPddCustomParameters();
+  const pid = requirePddPid();
+
+  return compactObject({
+    p_id_list: [pid],
+    custom_parameters: customParameters,
+    channel_type: 10,
+    generate_we_app: true,
   });
 }
 
@@ -273,7 +272,7 @@ function normalizeAuthorityUrlResponse(data) {
 }
 
 export async function queryMemberAuthority() {
-  const data = await callPddApi('pdd.ddk.member.authority.query', getAuthorityBaseParams());
+  const data = await callPddApi('pdd.ddk.member.authority.query', getAuthorityQueryParams());
 
   return {
     raw_response: data,
@@ -281,11 +280,7 @@ export async function queryMemberAuthority() {
 }
 
 export async function generateAuthorityUrl() {
-  const data = await callPddApi('pdd.ddk.rp.prom.url.generate', {
-    ...getAuthorityBaseParams(),
-    channel_type: 10,
-    generate_we_app: true,
-  });
+  const data = await callPddApi('pdd.ddk.rp.prom.url.generate', getAuthorityUrlParams());
 
   return normalizeAuthorityUrlResponse(data);
 }
