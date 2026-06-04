@@ -1,4 +1,4 @@
-import { PddApiError, generatePromotionLink } from './_lib/pdd.js';
+import { PddApiError, generatePromotionLink } from '../lib/pdd.js';
 
 type VercelRequest = {
   method?: string;

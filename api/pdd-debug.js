@@ -1,4 +1,4 @@
-import { callPddApi, getPddEnvPresence, PddApiError, queryConfiguredPidInventory } from './_lib/pdd.js';
+import { callPddApi, getPddEnvPresence, PddApiError, queryConfiguredPidInventory } from '../lib/pdd.js';
 
 const ACTIONS = new Set(['authority-query', 'authority-url', 'pid-query']);
 
@@ -34,10 +34,14 @@ function getSafePidDiagnostics() {
   return getPddEnvPresence();
 }
 
-function assertAdminAuthorized(req) {
+function getAdminAuthStatus(req) {
   const adminToken = normalizeText(process.env.ADMIN_TOKEN);
-  if (!adminToken) return true;
-  return normalizeText(getHeader(req, 'x-admin-token')) === adminToken;
+  if (!adminToken) return { ok: false, code: 'admin-token-not-configured' };
+
+  const requestToken = normalizeText(getHeader(req, 'x-admin-token'));
+  if (requestToken !== adminToken) return { ok: false, code: 'unauthorized' };
+
+  return { ok: true, code: '' };
 }
 
 function getDebugParams(body) {
@@ -129,8 +133,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!assertAdminAuthorized(req)) {
-    res.status(401).json({ ok: false, error: 'unauthorized' });
+  const auth = getAdminAuthStatus(req);
+  if (!auth.ok) {
+    res.status(401).json({ ok: false, error: auth.code });
     return;
   }
 

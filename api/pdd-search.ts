@@ -1,4 +1,4 @@
-import { PddApiError, searchGoods } from './_lib/pdd.js';
+import { PddApiError, searchGoods } from '../lib/pdd.js';
 
 type VercelRequest = {
   method?: string;
