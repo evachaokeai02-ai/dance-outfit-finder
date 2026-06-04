@@ -8,6 +8,8 @@ const DEFAULT_PID_NAME = 'dancecloset-main';
 const PID_QUERY_PAGE = 1;
 const PID_QUERY_PAGE_SIZE = 100;
 const PID_QUERY_STATUS = 0;
+const GOODS_PROMOTION_TYPE = 'pdd.ddk.goods.promotion.url.generate';
+const GOODS_PROMOTION_PID_FIELD = 'p_id';
 
 export class PddApiError extends Error {
   constructor(message, { statusCode = 500, code = 'pdd-api-error', details } = {}) {
@@ -160,23 +162,39 @@ function normalizeGeneratedPid(data) {
   };
 }
 
-function formatPromotionError(error) {
+function toPddErrorDetails(details = {}) {
+  return compactObject({
+    error_code: details.error_code ?? details.pddErrorCode,
+    error_msg: details.error_msg,
+    sub_code: details.sub_code ?? details.pddSubCode,
+    sub_msg: details.sub_msg ?? details.pddSubMessage,
+    request_id: details.request_id ?? details.requestId,
+  });
+}
+
+function formatPromotionError(error, promotionParamsDebug = null) {
   if (!(error instanceof PddApiError)) {
-    return {
+    return compactObject({
       code: 'internal-error',
       message: error instanceof Error ? error.message : 'Unknown error',
-    };
+      details: {},
+      promotionParamsDebug,
+    });
   }
 
-  return {
+  const details = toPddErrorDetails(error.details);
+
+  return compactObject({
     code: error.code,
     message: error.message,
-    error_code: error.details?.error_code ?? error.details?.pddErrorCode,
-    error_msg: error.details?.error_msg ?? error.message,
-    sub_code: error.details?.sub_code ?? error.details?.pddSubCode,
-    sub_msg: error.details?.sub_msg ?? error.details?.pddSubMessage,
-    request_id: error.details?.request_id ?? error.details?.requestId,
-  };
+    error_code: details.error_code,
+    error_msg: details.error_msg ?? error.message,
+    sub_code: details.sub_code,
+    sub_msg: details.sub_msg,
+    request_id: details.request_id,
+    details,
+    promotionParamsDebug,
+  });
 }
 
 function getPddPidDiagnostics() {
@@ -198,6 +216,24 @@ export function getPddEnvPresence() {
 
 function getPddCustomParameters() {
   return normalizeText(process.env.PDD_CUSTOM_PARAMETERS) || undefined;
+}
+
+function getPromotionParamsDebug({ goodsId = '', goodsSign = '', goodsParamFieldUsed = '' } = {}) {
+  const pidDiagnostics = getPddPidDiagnostics();
+  const customParameters = getPddCustomParameters();
+
+  return {
+    promotionType: GOODS_PROMOTION_TYPE,
+    hasPid: pidDiagnostics.hasPid,
+    pidLength: pidDiagnostics.pidLength,
+    pidHasUnderscore: pidDiagnostics.pidHasUnderscore,
+    pidPrefixMatchesDuoId: pidDiagnostics.pidPrefixMatchesDuoId,
+    pidFieldNameUsed: GOODS_PROMOTION_PID_FIELD,
+    hasCustomParameters: Boolean(customParameters),
+    goodsParamFieldUsed,
+    hasGoodsSign: Boolean(normalizeText(goodsSign)),
+    hasGoodsId: Boolean(normalizeText(goodsId)),
+  };
 }
 
 function getAuthorityQueryParams() {
@@ -455,6 +491,7 @@ function toPublicProduct(goods, promotion = {}) {
     weAppWebViewUrl: promotion.weAppWebViewUrl || '',
     weAppInfo: promotion.weAppInfo || null,
     promotionError: promotion.error || '',
+    promotionParamsDebug: promotion.promotionParamsDebug || null,
   };
 }
 
@@ -462,6 +499,7 @@ export async function generatePromotionLink({ goodsId, goodsSign }) {
   const pId = requirePddPid();
   const normalizedGoodsId = normalizeText(goodsId);
   const normalizedGoodsSign = normalizeText(goodsSign);
+  const customParameters = getPddCustomParameters();
 
   if (!normalizedGoodsId && !normalizedGoodsSign) {
     throw new PddApiError('goodsId or goodsSign is required', {
@@ -470,24 +508,46 @@ export async function generatePromotionLink({ goodsId, goodsSign }) {
     });
   }
 
+  const goodsParamFieldUsed = normalizedGoodsSign ? 'goods_sign_list' : 'goods_id_list';
+  const promotionParamsDebug = getPromotionParamsDebug({
+    goodsId: normalizedGoodsId,
+    goodsSign: normalizedGoodsSign,
+    goodsParamFieldUsed,
+  });
   const params = {
-    p_id: pId,
+    [GOODS_PROMOTION_PID_FIELD]: pId,
   };
 
-  if (normalizedGoodsSign) {
-    params.goods_sign_list = JSON.stringify([normalizedGoodsSign]);
-  } else {
-    params.goods_id_list = JSON.stringify([Number(normalizedGoodsId)]);
+  if (customParameters) {
+    params.custom_parameters = customParameters;
   }
 
-  const data = await callPddApi('pdd.ddk.goods.promotion.url.generate', params);
+  if (normalizedGoodsSign) {
+    params.goods_sign_list = [normalizedGoodsSign];
+  } else {
+    params.goods_id_list = [Number(normalizedGoodsId)];
+  }
+
+  let data;
+  try {
+    data = await callPddApi(GOODS_PROMOTION_TYPE, params);
+  } catch (error) {
+    if (error instanceof PddApiError) {
+      error.details = {
+        ...(error.details || {}),
+        promotionParamsDebug,
+      };
+    }
+    throw error;
+  }
+
   const promotion = toPromotionUrls(data);
 
   if (!promotion.promotionUrl) {
     throw new PddApiError('PDD promotion API did not return a promotion link', {
       statusCode: 502,
       code: 'missing-promotion-link',
-      details: { goodsId: normalizedGoodsId, goodsSign: normalizedGoodsSign },
+      details: { promotionParamsDebug },
     });
   }
 
@@ -501,6 +561,7 @@ export async function generatePromotionLink({ goodsId, goodsSign }) {
     url: promotion.url,
     weAppWebViewUrl: promotion.weAppWebViewUrl,
     weAppInfo: promotion.weAppInfo,
+    promotionParamsDebug,
   };
 }
 
@@ -526,12 +587,14 @@ export async function searchGoods({ keyword, page = DEFAULT_PAGE, pageSize = DEF
         const promotion = await generatePromotionLink({ goodsId: goods.goods_id, goodsSign: goods.goods_sign });
         return toPublicProduct(goods, promotion);
       } catch (error) {
-        const promotionError = formatPromotionError(error);
+        const promotionParamsDebug = error instanceof PddApiError ? error.details?.promotionParamsDebug : null;
+        const promotionError = formatPromotionError(error, promotionParamsDebug);
         console.error('[pdd-promotion] url generate failed', {
           ...getPddPidDiagnostics(),
         });
         return toPublicProduct(goods, {
           error: promotionError,
+          promotionParamsDebug,
         });
       }
     })
@@ -564,8 +627,16 @@ export function toRecommendationProduct(product, query, index = 0) {
     jumpUrl: normalizePublicUrl(product.jumpUrl || product.promotionLink),
     source: 'pdd',
     linkStatus: product.promotionLink ? 'ready' : 'failed',
-    linkMessage: product.promotionLink ? '' : product.promotionError?.error_msg || product.promotionError?.message || '链接生成失败/暂不可跳转',
+    linkMessage: product.promotionLink
+      ? ''
+      : product.promotionError?.details?.sub_msg ||
+        product.promotionError?.sub_msg ||
+        product.promotionError?.details?.error_msg ||
+        product.promotionError?.error_msg ||
+        product.promotionError?.message ||
+        '链接生成失败/暂不可跳转',
     promotionError: product.promotionError || '',
+    promotionParamsDebug: product.promotionParamsDebug || product.promotionError?.promotionParamsDebug || null,
     pdd: {
       goodsId: product.goodsId,
       goodsSign: product.goodsSign,
@@ -584,6 +655,7 @@ export function toRecommendationProduct(product, query, index = 0) {
       weAppWebViewUrl: normalizePublicUrl(product.weAppWebViewUrl),
       weAppInfo: product.weAppInfo || null,
       promotionError: product.promotionError || '',
+      promotionParamsDebug: product.promotionParamsDebug || product.promotionError?.promotionParamsDebug || null,
     },
   };
 }
