@@ -30,6 +30,7 @@ npm run build
 | `/api/outfit-keywords` | `GET` / `POST` | 根据 `danceName`、`style`、`color`、`scene`、`body`、`budget` 生成商品搜索关键词 | 本地规则生成 |
 | `/api/pdd-search` | `GET` / `POST` | 根据 `keyword` 搜索商品并尝试生成多多进宝推广链接 | 返回真实 PDD 商品；推广链接失败时字段为空并返回错误信息 |
 | `/api/pdd-link` | `GET` / `POST` | 根据 `goodsId` / `goodsSign` 生成推广 / 跳转链接 | 返回真实多多进宝推广链接；环境变量缺失会返回明确错误 |
+| `/api/pdd-debug` | `POST` | 管理员调试多多进宝授权备案，使用 `body.action` 区分 `authority-query` / `authority-url` | 如配置 `ADMIN_TOKEN`，必须传 `x-admin-token` |
 
 ### 示例请求
 
@@ -38,6 +39,7 @@ curl "http://localhost:3000/api/outfit-profile?query=Super%20Shy"
 curl "http://localhost:3000/api/outfit-keywords?danceName=Super%20Shy&style=甜酷&color=粉色&scene=舞台"
 curl "http://localhost:3000/api/pdd-search?keyword=甜酷短上衣"
 curl "http://localhost:3000/api/pdd-link?goodsId=123456789"
+curl -X POST "http://localhost:3000/api/pdd-debug" -H "Content-Type: application/json" -H "x-admin-token: $ADMIN_TOKEN" -d '{"action":"authority-query"}'
 ```
 
 > 注意：`npm run dev` 只启动 Vite 前端开发服务器。要在本地同时调试 Vercel Functions，建议使用 Vercel CLI：`vercel dev`。
@@ -52,6 +54,8 @@ curl "http://localhost:3000/api/pdd-link?goodsId=123456789"
 PDD_CLIENT_ID=your_client_id
 PDD_CLIENT_SECRET=your_client_secret
 PDD_PID=your_pid
+# 可选；配置后 /api/pdd-debug 必须携带匹配的 x-admin-token
+ADMIN_TOKEN=your_admin_token
 ```
 
 如果要把用户搜索、模型生成标签、商品和 Look 持久化到数据库，可选配置 Supabase：
@@ -70,6 +74,8 @@ SUPABASE_OUTFIT_EVENTS_TABLE=outfit_events
 PDD_CLIENT_ID=your_client_id
 PDD_CLIENT_SECRET=your_client_secret
 PDD_PID=your_pid
+# 可选；配置后 /api/pdd-debug 必须携带匹配的 x-admin-token
+ADMIN_TOKEN=your_admin_token
 ```
 
 如果要把用户搜索、模型生成标签、商品和 Look 持久化到数据库，可选配置 Supabase：
@@ -89,13 +95,14 @@ SUPABASE_OUTFIT_EVENTS_TABLE=outfit_events
 1. 打开 **Settings**。
 2. 打开 **Environment Variables**。
 3. 新增 `PDD_CLIENT_ID`、`PDD_CLIENT_SECRET`、`PDD_PID`。
-4. 如需持久化搜索和生成结果，新增 `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`、`SUPABASE_OUTFIT_EVENTS_TABLE`。
-5. 如需把本地 fallback 替换为真实模型，新增 `OPENAI_API_KEY`。
-6. 按需选择 Production / Preview / Development 环境。
-7. 重新部署项目。
+4. 如需使用 `/api/pdd-debug`，建议新增 `ADMIN_TOKEN`，并在请求头传入匹配的 `x-admin-token`。
+5. 如需持久化搜索和生成结果，新增 `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`、`SUPABASE_OUTFIT_EVENTS_TABLE`。
+6. 如需把本地 fallback 替换为真实模型，新增 `OPENAI_API_KEY`。
+7. 按需选择 Production / Preview / Development 环境。
+8. 重新部署项目。
 
 ## 安全原则
 
-- 前端只调用 `/api/outfit-profile`、`/api/outfit-events`、`/api/outfit-keywords`、`/api/pdd-products`、`/api/pdd-search`、`/api/pdd-link`、`/api/pdd/generate-url` 等自有接口。
+- 前端只调用 `/api/outfit-profile`、`/api/outfit-events`、`/api/outfit-keywords`、`/api/pdd-products`、`/api/pdd-search`、`/api/pdd-link` 等自有生产接口；PDD 临时调试统一走受保护的 `/api/pdd-debug`。
 - PDD 签名、推广位 PID、推广链接生成等逻辑放在 Serverless Functions 里。
 - `/api/pdd-products` 会在服务端环境变量齐全时调用 PDD 官方搜索接口，并在返回给前端前批量调用推广链接生成接口；推广链接生成失败时不会回退到任意占位或搜索 URL，商品卡片保持不可跳转并显示“链接生成失败/暂不可跳转”。
